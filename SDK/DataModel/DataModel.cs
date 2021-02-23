@@ -1,19 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.VisualBasic;
-using System.ComponentModel;
-//using System.Web.Services;
-//using System.Web.Services.Protocols;
 using System.Xml.Serialization;
+
+
 namespace Ditas.SDK
 {
     internal partial class VersionControl
@@ -4203,5 +4191,7 @@ namespace Ditas.SDK.DataModel
         public string InquiryID { get; set; }
         /// <remarks/>
         public UndefinedDataVO[] ExtraProperties { get; set; }
+
+
     }
 }

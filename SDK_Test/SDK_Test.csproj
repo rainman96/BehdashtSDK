@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CallUpInsurance_Test.cs" />
     <Compile Include="HID_Test.cs" />
     <Compile Include="GetHealthCareProviderInfo_Test.cs" />
     <Compile Include="GetPerson_Test.cs" />

@@ -27,6 +27,8 @@ namespace Ditas.SDK
             // get JSON result objects into a list
 
             // serialize JSON results into .NET objects
+            if (results == null)
+                return default;
             T searchResult = results.ToObject<T>();
             return searchResult;
         }

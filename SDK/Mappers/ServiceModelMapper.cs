@@ -14,12 +14,13 @@ namespace Ditas.SDK.Mappers
 {
     internal class ServiceModelMapper
     {
-        internal static DrugTaminRequest ToDrugTamin(MedicationPrescriptionsMessageVO medicationPrescriptionsMessage)
+        internal static DrugTaminRequest ToPrescriptionTamin(MedicationPrescriptionsMessageVO medicationPrescriptionsMessage)
         {
             if (medicationPrescriptionsMessage == null)
                 throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
 
             int repeat = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats.Value ?? 0;
+            var prescription = GetNotedetailePrescription(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders, repeat);
             return new DrugTaminRequest
             {
                 Comments = "Send Ditas",
@@ -28,31 +29,13 @@ namespace Ditas.SDK.Mappers
                 DocMobileNo = medicationPrescriptionsMessage?.MsgID?.Committer?.ContactPoint?.First()?.Detail,
                 DocNationalCode = null,
                 Mobile = medicationPrescriptionsMessage?.Person?.MobileNumber,
-                NoteDetailEprscs = GetNotedetaileprsc(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders, repeat),
+                NoteDetailEprscs = prescription,
                 Patient = medicationPrescriptionsMessage.Person.NationalCode,
                 PrescDate = GetPrescDate(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.IssueDate),
-                PrescType = new Presctype { PrescTypeId = (int)Constants.Enumarations.PrescType.Drug }
+                PrescType = new Presctype { PrescTypeId = (int)(prescription != null ? Constants.Enumarations.PrescType.Drug : Constants.Enumarations.PrescType.Visit) }
             };
         }
-        internal static DrugTaminRequest ToVisitTamin(MedicationPrescriptionsMessageVO medicationPrescriptionsMessage)
-        {
-            if (medicationPrescriptionsMessage == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
 
-            return new DrugTaminRequest
-            {
-                Comments = "Send Ditas",
-                SiamID = AppConfiguration.LocationID,
-                DocId = medicationPrescriptionsMessage?.Composition?.Admission?.AdmittingDoctor?.Identifier?.ID,
-                DocMobileNo = medicationPrescriptionsMessage?.MsgID?.Committer?.ContactPoint?.First()?.Detail,
-                DocNationalCode = null,
-                Mobile = medicationPrescriptionsMessage?.Person?.MobileNumber,
-                NoteDetailEprscs = null,
-                Patient = medicationPrescriptionsMessage.Person.NationalCode,
-                PrescDate = GetPrescDate(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.IssueDate),
-                PrescType = new Presctype { PrescTypeId = (int)Constants.Enumarations.PrescType.Visit }
-            };
-        }
         private static string GetPrescDate(DO_DATE issueDate)
         {
             if (issueDate == null)
@@ -73,10 +56,10 @@ namespace Ditas.SDK.Mappers
             };
         }
 
-        private static Notedetaileprsc[] GetNotedetaileprsc(MedicationPrescriptionRowVO[] orders, int repeat)
+        private static Notedetaileprsc[] GetNotedetailePrescription(MedicationPrescriptionRowVO[] orders, int repeat)
         {
             if (orders == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(orders)).Message);
+                return null;
 
 
             return orders.Select(s => new Notedetaileprsc
@@ -147,17 +130,20 @@ namespace Ditas.SDK.Mappers
         {
             if (personID == null)
                 throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
+            if (!Utilities.ValidateIranianNationalCode(personID.ID))
+                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(personID.ID)).Message);
             if (providerID == null)
                 throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
-            if (healthcarefacility == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(healthcarefacility)).Message);
+            if (string.IsNullOrEmpty(providerID.ID))
+                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
+
             return new InsuranceInquiryRequest
             {
                 ClientIp = Utilities.GetClientIp(),
                 AppUser = "ditas",
                 ForceUpdate = "false",
-                HcpID = healthcarefacility,
-                OrgID = providerID,
+                HcpID = providerID,
+                OrgID = healthcarefacility,
                 PersonID = personID
             };
         }

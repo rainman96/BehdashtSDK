@@ -44,10 +44,7 @@ namespace Ditas.SDK
                 switch (organizationType)
                 {
                     case InsuranceType.Tamin:
-                        if (MedicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders?.Length > 0)
-                            result = GetTaminDrug(MedicationPrescriptionsMessage);
-                        else
-                            result = GetTaminVisit(MedicationPrescriptionsMessage);
+                        result = GetPrescriptionTamin(MedicationPrescriptionsMessage);
                         break;
                     case InsuranceType.Salamt:
                         result = GetSalamt(MedicationPrescriptionsMessage);
@@ -79,25 +76,13 @@ namespace Ditas.SDK
             var response = ConvertToModel<DrugSalamatResponse>(preResponse);
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
-        private ResultVO GetTaminDrug(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
+        private ResultVO GetPrescriptionTamin(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
         {
-            var request = Mappers.ServiceModelMapper.ToDrugTamin(MedicationPrescriptionsMessage);
+            var request = Mappers.ServiceModelMapper.ToPrescriptionTamin(MedicationPrescriptionsMessage);
 
             var header = new ApiHeader(
                 AppConfiguration.PID(ConstatKeyValues.Tamin_PACKAGE_ID),
-                ConfigurationManager.AppSettings[ConstatKeyValues.DRUG_Tamin_SERVICE_URL]);
-
-            var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-            var response = ConvertToModel<DrugSalamatResponse>(preResponse);
-            return Mappers.ClientModelMapper.ToResultVo(response);
-        }
-        private ResultVO GetTaminVisit(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
-        {
-            var request = Mappers.ServiceModelMapper.ToVisitTamin(MedicationPrescriptionsMessage);
-
-            var header = new ApiHeader(
-                AppConfiguration.PID(ConstatKeyValues.Tamin_PACKAGE_ID),
-                ConfigurationManager.AppSettings[ConstatKeyValues.Visit_Tamin_SERVICE_URL]);
+                ConfigurationManager.AppSettings[ConstatKeyValues.VISIT_TAMIN_SERVICE_URL]);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             var response = ConvertToModel<DrugSalamatResponse>(preResponse);
@@ -255,6 +240,8 @@ namespace Ditas.SDK
                 throw;
             }
         }
+
+
         /// <summary>
         ///          This method is to get the Insurance info regarding any patient.
         ///          </summary>
@@ -262,40 +249,28 @@ namespace Ditas.SDK
         ///          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
         ///          <param name="ProviderID">This arguement is to specify the heathcare provider ID. The provider ID must be declared in DO_IDENTIFIER format.</param>
         ///          <returns>It returns an array of patient's Insurance data, i.e. basic and complementary.</returns>
-        private InsuranceInquiryVO[] CallupInsurance(DO_IDENTIFIER PersonID, DO_IDENTIFIER ProviderID)
+        public InsuranceInquiryVO[] CallupInsurance(DO_IDENTIFIER PersonID, DO_IDENTIFIER ProviderID)
         {
-            // TODO: Repcale Private with public
 
 
             string MethodName = "CallupInsurance";
             try
             {
-                // ------------------------part1------------------------------------------
+                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+
                 DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-                try
-                {
-                    //if (PersonID.Type.ToUpper == "National_Code".ToUpper())
-                    // MainFx.CheckNationalCode(PersonID.ID);
-                    if (ProviderID == null)
-                        throw new Exception("Argument is missing.");
-                    if (Healthcarefacility == null)
-                        throw new Exception("Argument is missing.");
-
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Error at SDK Validation. ", ex);
-                }
-                // ------------------------part2------------------------------------------
-                _LogIfAvailiable("CallHIX Total Time");
-
                 InsuranceInquiryRequest request = Mappers.ServiceModelMapper.ToInsuranceRequest(PersonID, ProviderID, Healthcarefacility);
 
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.CALL_UP_INSURANCE_URL]);
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse);
+                var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse, "data");
+                if (result == null)
+                {
+                    var cause = ConvertToModel<CallUpFailedResponse>(preResponse);
+                    result= new List<InsuranceInquiryVO> { new InsuranceInquiryVO { ErrorMessage = cause.message[0] } };
+                }
                 _LogIfAvailiable("CallHIX Total Time");
                 return result.ToArray();
             }

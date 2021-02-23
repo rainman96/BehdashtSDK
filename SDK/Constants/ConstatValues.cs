@@ -26,8 +26,7 @@ namespace Ditas.SDK.Constants
         internal const string DRUG_SALAMAT_SERVICE_URL = "DrugSalamatServiceUrl";
         internal const string CALL_UP_INSURANCE_URL = "CallupInsuranceUrl";
         internal const string HID_SERVICE_URL = "HidServiceUrl";
-        internal const string DRUG_Tamin_SERVICE_URL= "DrugTaminServiceUrl";
-        internal const string Visit_Tamin_SERVICE_URL = "VisitTaminServiceUrl";
+        internal const string VISIT_TAMIN_SERVICE_URL = "PrescriptionTaminServiceUrl";
         internal static string WEBSERVICE_BASE_URL= "WebServiceBaseUrl"; 
         internal static string GET_MEMBER_NEZAMPEZESHKI_URL = "MemberNezamPezeshkiServiceUrl"; 
     }

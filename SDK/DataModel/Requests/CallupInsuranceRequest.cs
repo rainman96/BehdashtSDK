@@ -13,9 +13,9 @@ namespace Ditas.SDK.DataModel
 
     public class InsuranceInquiryRequest:IJsonProducer
     {
-        [JsonProperty("personID")]
+        [JsonProperty("PersonID")]
         public DO_IDENTIFIER PersonID { get; set; }
-        [JsonProperty("orgID")]
+        [JsonProperty("OrgID")]
         public DO_IDENTIFIER OrgID { get; set; }
         [JsonProperty("hcpID")]
         public DO_IDENTIFIER HcpID { get; set; }
