@@ -56,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CallUpInsurance_Test.cs" />
+    <Compile Include="GetPrescriptionTamin_Test.cs" />
     <Compile Include="HID_Test.cs" />
     <Compile Include="GetHealthCareProviderInfo_Test.cs" />
     <Compile Include="GetPerson_Test.cs" />
@@ -74,6 +75,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="PrescriptionReq.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="req.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

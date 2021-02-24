@@ -28,6 +28,8 @@ namespace Ditas.SDK.DataModel
         public string DocNationalCode { get; set; }
         [JsonProperty("comments")]
         public string Comments { get; set; }
+        [JsonProperty("expireDate")]
+        public string ExpireDate { get; set; }
         [JsonProperty("siamId")]
 
         public string SiamID { get; set; }

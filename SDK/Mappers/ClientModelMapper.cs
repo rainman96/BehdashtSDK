@@ -56,8 +56,14 @@ namespace Ditas.SDK.Mappers
             };
         }
 
+        internal static ResultVO ToResultVo(PrescriptionTaminResponse response)
+        {
+            if (response == null) return new ResultVO { ErrorMessage = "Server no response" };
+            return new ResultVO {CompositionUID = response?.HeadEprscId,ErrorMessage = response?.FullErrorMessage};
+        }
         internal static ResultVO ToResultVo(DrugSalamatResponse response)
         {
+            if (response == null) return new ResultVO { ErrorMessage = "Server no response" };
             return new ResultVO
             {
                 CompositionUID = response?.TrackingID?.ID,

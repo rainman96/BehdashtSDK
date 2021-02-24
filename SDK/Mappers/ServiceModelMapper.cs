@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using System.Globalization;
 
 namespace Ditas.SDK.Mappers
 {
@@ -28,12 +29,20 @@ namespace Ditas.SDK.Mappers
                 DocId = medicationPrescriptionsMessage?.Composition?.Admission?.AdmittingDoctor?.Identifier?.ID,
                 DocMobileNo = medicationPrescriptionsMessage?.MsgID?.Committer?.ContactPoint?.First()?.Detail,
                 DocNationalCode = null,
+                ExpireDate = GetExpireDate(),
                 Mobile = medicationPrescriptionsMessage?.Person?.MobileNumber,
                 NoteDetailEprscs = prescription,
                 Patient = medicationPrescriptionsMessage.Person.NationalCode,
                 PrescDate = GetPrescDate(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.IssueDate),
                 PrescType = new Presctype { PrescTypeId = (int)(prescription != null ? Constants.Enumarations.PrescType.Drug : Constants.Enumarations.PrescType.Visit) }
             };
+        }
+
+        private static string GetExpireDate()
+        {
+            var date = DateTime.Now.AddDays(60);
+            var persianDate = new PersianCalendar();
+            return $"{persianDate.GetYear(date)}{persianDate.GetMonth(date)}{persianDate.GetDayOfMonth(date)}";
         }
 
         private static string GetPrescDate(DO_DATE issueDate)

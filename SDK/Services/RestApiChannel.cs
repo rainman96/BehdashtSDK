@@ -15,7 +15,7 @@ namespace Ditas.SDK.Services
 
         private static TokenManager _tokenManager;
 
-        public string CallWebApi(ApiHeader header, ApiRequest apiRequest)
+        public IRestResponse CallWebApi(ApiHeader header, ApiRequest apiRequest)
         {
             var (isValid, message, _) = ValidateInputs(header, apiRequest);
             if (isValid == false)
@@ -24,27 +24,17 @@ namespace Ditas.SDK.Services
                 throw new Exception("Token is empty");
 
             //Log.Debug($"Calling CallWebApiGet({address},data,method,token)");
-            string result;
-            //try
-            //{
-                string _base = AppConfiguration.WebServiceBaseAddress;
-                var client = new RestClient($"{(_base.EndsWith("/") ? _base : _base + "/")}{(header.ApiUrl.StartsWith("/") ? header.ApiUrl.Remove(0, 1) : header.ApiUrl)}");
-                var request = new RestRequest(header.ApiMethodType);
-                request.AddHeader("cache-control", "no-cache");
-                request.AddHeader("content-type", header.ContentType);
-                request.AddHeader("Connection", "keep-alive");
-                request.AddHeader("Authorization", "bearer " + _tokenManager.GetAccessToken());
-                request.AddHeader("pid", header.PackageID);
-                request.AddJsonBody(apiRequest.JsonBody);
-                IRestResponse response = client.Execute(request);
-                result = response.Content;
-            //}
-            //catch
-            //{
-            //    // Log.Error($"Got Error:{ex.Message}");
-            //    throw;
-            //}
-            return result;
+            string _base = AppConfiguration.WebServiceBaseAddress;
+            var client = new RestClient($"{(_base.EndsWith("/") ? _base : _base + "/")}{(header.ApiUrl.StartsWith("/") ? header.ApiUrl.Remove(0, 1) : header.ApiUrl)}");
+            var request = new RestRequest(header.ApiMethodType);
+            request.AddHeader("cache-control", "no-cache");
+            request.AddHeader("content-type", header.ContentType);
+            request.AddHeader("Connection", "keep-alive");
+            request.AddHeader("Authorization", "bearer " + _tokenManager.GetAccessToken());
+            request.AddHeader("pid", header.PackageID);
+            request.AddJsonBody(apiRequest.JsonBody);
+            IRestResponse response = client.Execute(request);
+            return response;
         }
         public static IServiceConfiguration GetChannelFromConfig() => new RestApiChannel();
         public IRestApiChannel GetToken()
@@ -78,7 +68,7 @@ namespace Ditas.SDK.Services
         }
 
         #region Private
-        private (bool State, string Message,string FieldName) ValidateInputs(ApiHeader header, ApiRequest apiRequest)
+        private (bool State, string Message, string FieldName) ValidateInputs(ApiHeader header, ApiRequest apiRequest)
         {
             var headerValidationresult = header.IsValid();
             if (!headerValidationresult.State)

@@ -86,6 +86,8 @@
     <Compile Include="DataModel\Response\CallUpFailedResponse.cs" />
     <Compile Include="DataModel\Response\InsuranceInfromationResponse.cs" />
     <Compile Include="DataModel\Response\MemberInfoByMcResponse.cs" />
+    <Compile Include="DataModel\Response\PrescriptionTaminResponse.cs" />
+    <Compile Include="DataModel\Response\ServerResponse.cs" />
     <Compile Include="IServices\IJsonProducer.cs" />
     <Compile Include="DataModel\Response\GeneralResponse.cs" />
     <Compile Include="DataModel\Requests\LoginRequest.cs" />

@@ -73,19 +73,26 @@ namespace Ditas.SDK
                 ConfigurationManager.AppSettings[ConstatKeyValues.DRUG_SALAMAT_SERVICE_URL]);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-            var response = ConvertToModel<DrugSalamatResponse>(preResponse);
+            if (preResponse.StatusCode != HttpStatusCode.OK)
+            {
+                throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+            }
+            var response = ConvertToModel<DrugSalamatResponse>(preResponse.Content);
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
         private ResultVO GetPrescriptionTamin(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
         {
             var request = Mappers.ServiceModelMapper.ToPrescriptionTamin(MedicationPrescriptionsMessage);
-
             var header = new ApiHeader(
-                AppConfiguration.PID(ConstatKeyValues.Tamin_PACKAGE_ID),
-                ConfigurationManager.AppSettings[ConstatKeyValues.VISIT_TAMIN_SERVICE_URL]);
+                AppConfiguration.PID(ConstatKeyValues.Prescription_Tamin_Package_ID),
+                ConfigurationManager.AppSettings[ConstatKeyValues.PRESCRIPTION_TAMIN_SERVICE_URL]);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-            var response = ConvertToModel<DrugSalamatResponse>(preResponse);
+            if (preResponse.StatusCode != HttpStatusCode.OK)
+            {
+                throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+            }
+            var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data");
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
 
@@ -111,7 +118,11 @@ namespace Ditas.SDK
                     AppConfiguration.PID(ConstatKeyValues.SABT_AHVAL_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.PERSON_SERVICE_URL]);
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var response = ConvertToModel<GetEstelam3Response>(preResponse, "getEstelam3Response", "return");
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<GetEstelam3Response>(preResponse.Content, "getEstelam3Response", "return");
 
                 var result = Mappers.ClientModelMapper.ToPersonVo(response);
                 _LogIfAvailiable("CallHIX Total Time");
@@ -145,7 +156,11 @@ namespace Ditas.SDK
                 var header = new ApiHeader(AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID), ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
 
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var response = ConvertToModel<HIDResponse>(preResponse);
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
                 _LogIfAvailiable("CallHIX Total Time");
                 return result;//TODO Change 
@@ -189,7 +204,11 @@ namespace Ditas.SDK
                     ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
 
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var response = ConvertToModel<HIDResponse>(preResponse);
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
                 _LogIfAvailiable("CallHIX Total Time");
                 return result;//TODO Change 
@@ -228,7 +247,11 @@ namespace Ditas.SDK
                     ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
 
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var response = ConvertToModel<HIDResponse>(preResponse);
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
                 _LogIfAvailiable("CallHIX Total Time");
                 return result;//TODO Change 
@@ -265,11 +288,16 @@ namespace Ditas.SDK
                     AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.CALL_UP_INSURANCE_URL]);
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse, "data");
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse.Content, "data");
+
                 if (result == null)
                 {
-                    var cause = ConvertToModel<CallUpFailedResponse>(preResponse);
-                    result= new List<InsuranceInquiryVO> { new InsuranceInquiryVO { ErrorMessage = cause.message[0] } };
+                    var cause = ConvertToModel<CallUpFailedResponse>(preResponse.Content);
+                    result = new List<InsuranceInquiryVO> { new InsuranceInquiryVO { ErrorMessage = cause.message[0] } };
                 }
                 _LogIfAvailiable("CallHIX Total Time");
                 return result.ToArray();
@@ -305,7 +333,12 @@ namespace Ditas.SDK
                     ConfigurationManager.AppSettings[ConstatKeyValues.GET_MEMBER_NEZAMPEZESHKI_URL]);
 
                 var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                var response = ConvertToModel<MemberInfoByMcResponse>(preResponse, "GetMemberInfoByMcCodeNumericTypeEnResponse", "GetMemberInfoByMcCodeNumericTypeEnResult");
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<MemberInfoByMcResponse>(preResponse.Content, "GetMemberInfoByMcCodeNumericTypeEnResponse", "GetMemberInfoByMcCodeNumericTypeEnResult");
+
                 if (response.ReturnValue == null)
                     throw new NullReferenceException(response.Message);
                 HealthcareProviderVO result = Mappers.ClientModelMapper.HealthcareProviderVO(response);

@@ -18,6 +18,7 @@ namespace Ditas.SDK
 
         private T ConvertToModel<T>(string result, params string[] filters)
         {
+            if (string.IsNullOrEmpty(result)) return default;
             JObject googleSearch = JObject.Parse(result);
             JToken results = googleSearch["result"]["data"];
             foreach (var filter in filters)

@@ -1,0 +1,132 @@
+<MedicationPrescriptionsMessageVO
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:VM="http://thrita.behdasht.gov.ir/VM/"
+	xmlns:a="http://thrita.behdasht.gov.ir/ClinicalClass/">
+	<VM:Person FirstName="حاجیه" LastName="شیخی" NationalCode="1688951301">
+		<VM:MaritalStatus Value="متأهل" Terminology_id="thritaEHR.maritalStatus" Coded_string="2" />
+		<VM:Nationality Value="Iran, Islamic Republic of" Terminology_id="ISO_3166-1" Coded_string="IR" />
+		<VM:BirthDate>
+			<VM:Year>1361</VM:Year>
+			<VM:Month>11</VM:Month>
+			<VM:Day>30</VM:Day>
+		</VM:BirthDate>
+		<VM:BirthdateAccuracy Value="روز، ماه و سال دقیق است." Terminology_id="thritaEHR.birthDateAccuracy" Coded_string="AAA" />
+		<VM:Father_FirstName>چاپار</VM:Father_FirstName>
+		<VM:FullName>حاجیه شیخی</VM:FullName>
+		<VM:PostalCode>4948114463</VM:PostalCode>
+		<VM:Gender Value="زن" Terminology_id="thritaEHR.gender" Coded_string="2" />
+		<VM:FullAddress>خ فرهنگ</VM:FullAddress>
+		<VM:HomeTel>01734200299</VM:HomeTel>
+		<VM:MobileNumber>09354614479</VM:MobileNumber>
+		<VM:EducationLevel Value="ابتدایی" Terminology_id="thritaEHR.educationLevel" Coded_string="2" />
+	</VM:Person>
+	<VM:MsgID>
+		<VM:IS_Queriable xsi:nil="true" />
+		<VM:SystemID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="2F8DE629-458E-402A-9173-D540C7166EFC" Type="System_ID" />
+		<VM:HealthCareFacilityID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="9b1a6231-33cb-400c-a68d-55501437136b" Type="Org_ID" />
+	</VM:MsgID>
+	<VM:Composition>
+		<VM:Admission>
+			<VM:AdmissionDate>
+				<VM:Year>1399</VM:Year>
+				<VM:Month>9</VM:Month>
+				<VM:Day>6</VM:Day>
+			</VM:AdmissionDate>
+			<VM:AdmissionTime>
+				<VM:Hour>9</VM:Hour>
+				<VM:Minute>39</VM:Minute>
+				<VM:Second>0</VM:Second>
+			</VM:AdmissionTime>
+			<VM:AdmissionType Value="سرپایی" Terminology_id="thritaEHR.admissionType" Coded_string="1" />
+			<VM:MedicalRecordNumber>L4G8V485306</VM:MedicalRecordNumber>
+			<VM:Institute>
+				<VM:Name>مرکز خدمات جامع سلامت روستایی عرفان آباد</VM:Name>
+				<VM:ID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="9b1a6231-33cb-400c-a68d-55501437136b" Type="Org_ID" />
+				<VM:Type Value="مرکز بهداشتی درمانی" Terminology_id="thritaEHR.organizationType" Coded_string="26" />
+				<VM:Location>
+					<VM:Country Value="Iran, Islamic Republic of" Terminology_id="ISO_3166-1" Coded_string="IR" />
+					<VM:Province Value="گلستان" Terminology_id="countryDivisions" Coded_string="28" />
+					<VM:City Value="علی آباد" Terminology_id="countryDivisions" Coded_string="177" />
+					<VM:District Value="مرکزی" Terminology_id="countryDivisions" Coded_string="10216" />
+					<VM:RuralArea Value="کتول" Terminology_id="countryDivisions" Coded_string="40285" />
+					<VM:Village Value="عرفان اباد" Terminology_id="countryDivisions" Coded_string="021298" />
+				</VM:Location>
+			</VM:Institute>
+			<VM:ReasonForEncounter Value="Lethargy" Terminology_id="ICPC2P" Coded_string="A04014" />
+			<VM:AttendingDoctor FirstName="ساناز" LastName="نژادی کلاریجانی" FullName="ساناز نژادی کلاریجانی">
+				<VM:Specialty Value="دکترای پزشکی" Terminology_id="thritaEHR.specialty" Coded_string="151212" />
+				<VM:Identifier Issuer="National_Org_Civil_Reg" Assigner="National_Org_Civil_Reg" ID="2250052700" Type="National_Code" />
+				<VM:Role Value="پزشک معالج" Terminology_id="thritaEHR.healthcareProvider.role" Coded_string="1.1" />
+			</VM:AttendingDoctor>
+		</VM:Admission>
+		<VM:Insurance>
+			<VM:Insurer Value="خدمات درمانی" Terminology_id="thritaEHR.insurer" Coded_string="1" />
+			<VM:InsuranceBox Value="روستایی" Terminology_id="thritaEHR.insuranceBox" Coded_string="26.3" />
+			<VM:InsuranceExpirationDate>
+				<VM:Year>1400</VM:Year>
+				<VM:Month>2</VM:Month>
+				<VM:Day>5</VM:Day>
+			</VM:InsuranceExpirationDate>
+			<VM:InsuredNumber>1688951301</VM:InsuredNumber>
+			<VM:SHEBAD Issuer="IHIO" Assigner="IHIO" ID="2992MW8EQH" Type="HID" />
+		</VM:Insurance>
+		<VM:MedicationPrescriptions>
+			<VM:Prescriber FirstName="ساناز" LastName="نژادی کلاریجانی" FullName="ساناز نژادی کلاریجانی">
+				<VM:Identifier Issuer="National_Org_Civil_Reg" Assigner="National_Org_Civil_Reg" ID="2250052700" Type="National_Code" />
+			</VM:Prescriber>
+			<VM:IssueDate>
+				<VM:Year>1399</VM:Year>
+				<VM:Month>9</VM:Month>
+				<VM:Day>6</VM:Day>
+			</VM:IssueDate>
+			<VM:IssueTime>
+				<VM:Hour>9</VM:Hour>
+				<VM:Minute>39</VM:Minute>
+				<VM:Second>0</VM:Second>
+			</VM:IssueTime>
+			<VM:ePrescriptionID>2992MW8EQH</VM:ePrescriptionID>
+			<VM:Orders>
+				<VM:MedicationPrescriptionRowVO>
+					<VM:Method Text="">
+						<VM:Coding Value="" Terminology_id="" Coded_string="1" />
+					</VM:Method>
+					<VM:ProductCode Value="VOLTAREN 100MG SUPP" Terminology_id="FDO-ir" Coded_string="22644" />
+					<VM:Frequency Value="Once daily (qualifier value)" Terminology_id="SNOMEDCT" Coded_string="229797004" />
+					<VM:Route Value="Administration of drug or medicament via rectal route (procedure)" Terminology_id="SNOMEDCT" Coded_string="386360003" />
+					<VM:TotalNumber Unit="Each">
+						<VM:Magnitude>5</VM:Magnitude>
+					</VM:TotalNumber>
+				</VM:MedicationPrescriptionRowVO>
+				<VM:MedicationPrescriptionRowVO>
+					<VM:Method Text="">
+						<VM:Coding Value="" Terminology_id="" Coded_string="1" />
+					</VM:Method>
+					<VM:ProductCode Value="DIPICOLD TAB" Terminology_id="FDO-ir" Coded_string="15988" />
+					<VM:Frequency Value="Twice a day (qualifier value)" Terminology_id="SNOMEDCT" Coded_string="229799001" />
+					<VM:Route Value="Administration of drug or medicament via oral route (procedure)" Terminology_id="SNOMEDCT" Coded_string="386359008" />
+					<VM:TotalNumber Unit="Each">
+						<VM:Magnitude>20</VM:Magnitude>
+					</VM:TotalNumber>
+				</VM:MedicationPrescriptionRowVO>
+				<VM:MedicationPrescriptionRowVO>
+					<VM:Method Text="">
+						<VM:Coding Value="" Terminology_id="" Coded_string="1" />
+					</VM:Method>
+					<VM:ProductCode Value="ALPEX 20MG/1ML AMP" Terminology_id="FDO-ir" Coded_string="4631" />
+					<VM:Frequency Value="Once daily (qualifier value)" Terminology_id="SNOMEDCT" Coded_string="229797004" />
+					<VM:Route Value="Administration of drug or medicament via intramuscular route (procedure)" Terminology_id="SNOMEDCT" Coded_string="386356001" />
+					<VM:TotalNumber Unit="Each">
+						<VM:Magnitude>1</VM:Magnitude>
+					</VM:TotalNumber>
+				</VM:MedicationPrescriptionRowVO>
+			</VM:Orders>
+			<VM:ExpiryDate>
+				<VM:Year>1399</VM:Year>
+				<VM:Month>10</VM:Month>
+				<VM:Day>6</VM:Day>
+			</VM:ExpiryDate>
+			<VM:Repeats>1</VM:Repeats>
+		</VM:MedicationPrescriptions>
+	</VM:Composition>
+</MedicationPrescriptionsMessageVO>
