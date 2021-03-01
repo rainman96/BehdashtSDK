@@ -62,6 +62,7 @@
     <Compile Include="GetPerson_Test.cs" />
     <Compile Include="GeneralTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="GetHIDurgent_Test.cs" />
     <Compile Include="XmlSerializer.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -76,6 +77,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="PrescriptionReq.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="JsonPrescriptionReq.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="req.txt">

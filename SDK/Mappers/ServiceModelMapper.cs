@@ -20,7 +20,12 @@ namespace Ditas.SDK.Mappers
             if (medicationPrescriptionsMessage == null)
                 throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
 
-            int repeat = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats.Value ?? 0;
+            var nationalCode = medicationPrescriptionsMessage?.Person?.NationalCode;
+            if (!Utilities.ValidateIranianNationalCode(nationalCode))
+                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+
+            var reps = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats;
+            int repeat = reps.HasValue ? reps.Value : 0;
             var prescription = GetNotedetailePrescription(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders, repeat);
             return new DrugTaminRequest
             {
@@ -32,7 +37,7 @@ namespace Ditas.SDK.Mappers
                 ExpireDate = GetExpireDate(),
                 Mobile = medicationPrescriptionsMessage?.Person?.MobileNumber,
                 NoteDetailEprscs = prescription,
-                Patient = medicationPrescriptionsMessage.Person.NationalCode,
+                Patient = nationalCode,
                 PrescDate = GetPrescDate(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.IssueDate),
                 PrescType = new Presctype { PrescTypeId = (int)(prescription != null ? Constants.Enumarations.PrescType.Drug : Constants.Enumarations.PrescType.Visit) }
             };
@@ -80,14 +85,14 @@ namespace Ditas.SDK.Mappers
                 Repeat = repeat,
                 SrvId = new Srvid
                 {
-                    SrvCode = s.ProductCode.Coded_string,
+                    SrvCode = s?.ProductCode?.Coded_string,
                     SrvType = new Srvtype
                     {
                         SrvType = "01"
                     }
                 },
-                SrvQty = (int)s.TotalNumber.Magnitude.Value,
-                TimesAday = new Timesaday { DrugAmntId = Utilities.ToIntSafe(s.Frequency.Coded_string, "s.Frequency.Coded_string") }
+                SrvQty = (int)(s?.TotalNumber?.Magnitude.HasValue ?? false ? s?.TotalNumber?.Magnitude.Value : 0),
+                TimesAday = new Timesaday { DrugAmntId = Utilities.ToIntSafe(s?.Frequency?.Coded_string, "Frequency.Coded_string") }
             }
                 ).ToArray();
         }

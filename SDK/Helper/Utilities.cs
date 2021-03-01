@@ -19,6 +19,11 @@ namespace Ditas.SDK.Helper
         {
             return JsonConvert.SerializeObject(secureRequest);
         }
+        public static T JsonTextToModel<T>(string secureRequest)
+        {
+            return JsonConvert.DeserializeObject<T>(secureRequest);
+        }
+
         public static string GetClientIp()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());

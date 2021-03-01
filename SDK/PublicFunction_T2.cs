@@ -52,7 +52,7 @@ namespace Ditas.SDK
                     case InsuranceType.NirohayeMosallah:
                     case InsuranceType.Azad:
                     default:
-                        throw new NotImplementedException("Not implemented in current version");
+                        throw new NotImplementedException($"this Insurance [Coded String:{(int)organizationType} Not implemented in current version");
                 }
 
                 _LogIfAvailiable("CallHIX Total Time");
@@ -92,7 +92,7 @@ namespace Ditas.SDK
             {
                 throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
             }
-            var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data");
+            var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
 

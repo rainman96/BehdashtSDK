@@ -24,6 +24,13 @@ namespace Ditas.SDK_Test
             Assert.IsNotNull(result);
         }
         [TestMethod]
+        public void SaveMedicationPrescription_Json()
+        {
+            service = new Service();
+            var result = service.SaveMedicationPrescription(Utilities.JsonTextToModel<MedicationPrescriptionsMessageVO>(File.ReadAllText("JsonPrescriptionReq.txt")));
+            Assert.IsNotNull(result);
+        }
+        [TestMethod]
         public void GetHID_BadNationalCode()
         {
             service = new Service();

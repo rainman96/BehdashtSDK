@@ -1,0 +1,257 @@
+{
+  "Person": {
+    "OtherContacts": null,
+    "OtherIdentifier": null,
+    "BirthPlaceArea": null,
+    "Religion": null,
+    "MaritalStatus": null,
+    "Nationality": {
+      "Value": "Iran, Islamic Republic of",
+      "Terminology_id": "ISO_3166-1",
+      "Coded_string": "IR"
+    },
+    "BirthDate": {
+      "Year": 1358,
+      "Month": 6,
+      "Day": 30,
+      "ISOString": null
+    },
+    "BirthTime": null,
+    "BirthdateAccuracy": null,
+    "Father_FirstName": null,
+    "Father_LastName": null,
+    "Mother_FirstName": null,
+    "Mother_LastName": null,
+    "FullName": null,
+    "PostalCode": null,
+    "Gender": {
+      "Value": "مرد",
+      "Terminology_id": "thritaEHR.gender",
+      "Coded_string": "1"
+    },
+    "Job": null,
+    "JobDescribtion": null,
+    "FullAddress": null,
+    "LivingPlaceArea": null,
+    "IDCardNumber": null,
+    "IDIssueArea": null,
+    "HomeTel": null,
+    "MobileNumber": null,
+    "EducationLevel": null,
+    "FirstName": "احسان",
+    "LastName": "موسی فرخانی",
+    "NationalCode": "0871219344"
+  },
+  "MsgID": {
+    "VersionLifecycleState": null,
+    "IS_Queriable": null,
+    "CompositionSignature": null,
+    "SystemID": {
+      "Issuer": "MOHME_IT",
+      "Assigner": "MOHME_IT",
+      "ID": "ecece458-f904-4c02-92cd-ce46f7f95018",
+      "Type": "System_ID"
+    },
+    "HealthCareFacilityID": {
+      "Issuer": "MOHME_IT",
+      "Assigner": "MOHME_IT",
+      "ID": "83b260b2-82ee-4bfc-802e-dad19a0f57bc",
+      "Type": "Org_ID"
+    },
+    "PatientUID": null,
+    "CompositionUID": null,
+    "Committer": {
+      "Identifier": {
+        "Issuer": "Med_Council",
+        "Assigner": "Med_Council",
+        "ID": "90777",
+        "Type": "Med_ID"
+      },
+      "ContactPoint": null,
+      "FirstName": "حمید رضا",
+      "LastName": "سالاری",
+      "FullName": null
+    }
+  },
+  "Composition": {
+    "Admission": {
+      "ArrivalMode": null,
+      "OtherParticipation": null,
+      "EMSID": null,
+      "OtherDateTime": null,
+      "AdmissionDate": {
+        "Year": 1399,
+        "Month": 12,
+        "Day": 9,
+        "ISOString": null
+      },
+      "AdmissionTime": null,
+      "AdmissionType": {
+        "Value": "سرپایی",
+        "Terminology_id": "thritaEHR.admissionType",
+        "Coded_string": "1"
+      },
+      "MedicalRecordNumber": "90875547",
+      "Institute": {
+        "Name": "مرکز خدمات جامع سلامت روستایی کندکلی",
+        "ID": {
+          "Issuer": "MOHME_IT",
+          "Assigner": "MOHME_IT",
+          "ID": "83b260b2-82ee-4bfc-802e-dad19a0f57bc",
+          "Type": "Org_ID"
+        },
+        "Type": null,
+        "Location": null,
+        "PortablePosition": null
+      },
+      "ReasonForEncounter": null,
+      "AdmittingDoctor": null,
+      "ReferringDoctor": null,
+      "AttendingDoctor": {
+        "Specialty": null,
+        "Identifier": {
+          "Issuer": "Med_Council",
+          "Assigner": "Med_Council",
+          "ID": "90777",
+          "Type": "Med_ID"
+        },
+        "Role": null,
+        "ContactPoint": null,
+        "FirstName": "حمید رضا",
+        "LastName": "سالاری",
+        "FullName": null
+      },
+      "AdmissionWard": null,
+      "PatientLocation": null
+    },
+    "Insurance": {
+      "InsuranceContribution": null,
+      "InsuranceOtherCosts": null,
+      "Insurer": {
+        "Value": "تأمين اجتماعي",
+        "Terminology_id": "thritaEHR.Insurer",
+        "Coded_string": "1"
+      },
+      "InsuranceBox": {
+        "Value": "تست",
+        "Terminology_id": "thritaEHR.insuranceBox",
+        "Coded_string": "1"
+      },
+      "InsuranceBookletSerialNumber": null,
+      "InsuranceExpirationDate": null,
+      "InsuredNumber": null,
+      "SHEBAD": {
+        "Issuer": "TAMIN",
+        "Assigner": "TAMIN",
+        "ID": "19955TT2BB",
+        "Type": "HID"
+      }
+    },
+    "MedicationPrescriptions": {
+      "Prescriber": {
+        "Identifier": {
+          "Issuer": "Med_Council",
+          "Assigner": "Med_Council",
+          "ID": "90777",
+          "Type": "Med_ID"
+        },
+        "ContactPoint": null,
+        "FirstName": "حمید رضا",
+        "LastName": "سالاری",
+        "FullName": null
+      },
+      "IssueDate": {
+        "Year": 1399,
+        "Month": 12,
+        "Day": 9,
+        "ISOString": null
+      },
+      "IssueTime": null,
+      "ePrescriptionID": "0119955TT2BB",
+      "Orders": [
+        {
+          "AsNeeded": null,
+          "Priority": null,
+          "Substitution": null,
+          "Site": null,
+          "Method": null,
+          "ReasonCode": null,
+          "PatientInstruction": null,
+          "Ingredient": null,
+          "Shape": null,
+          "DrugName": null,
+          "ProductCode": {
+            "Value": "ACETAMINOPHEN / CAFFEINE / ASA 162.5 mg / 32.5 mg / 325 mg TABLET ORAL",
+            "Terminology_id": "eRx",
+            "Coded_string": "60000"
+          },
+          "DrugNameDescription": null,
+          "Dosage": {
+            "Magnitude": 1,
+            "MagnitudeStatus": null,
+            "Unit": "Vial"
+          },
+          "Frequency": {
+            "Value": "Twice a day (qualifier value)",
+            "Terminology_id": "SNOMEDCT",
+            "Coded_string": "229799001"
+          },
+          "Route": {
+            "Value": "Administration of drug or medicament via oral route (procedure)",
+            "Terminology_id": "SNOMEDCT",
+            "Coded_string": "386359008"
+          },
+          "Description": null,
+          "TotalNumber": {
+            "Magnitude": 100,
+            "MagnitudeStatus": null,
+            "Unit": "Vial"
+          }
+        },
+        {
+          "AsNeeded": null,
+          "Priority": null,
+          "Substitution": null,
+          "Site": null,
+          "Method": null,
+          "ReasonCode": null,
+          "PatientInstruction": null,
+          "Ingredient": null,
+          "Shape": null,
+          "DrugName": null,
+          "ProductCode": {
+            "Value": "ACICLOVIR 200 mg TABLET ORAL",
+            "Terminology_id": "eRx",
+            "Coded_string": "60039"
+          },
+          "DrugNameDescription": null,
+          "Dosage": {
+            "Magnitude": 1,
+            "MagnitudeStatus": null,
+            "Unit": "Vial"
+          },
+          "Frequency": {
+            "Value": "Once daily",
+            "Terminology_id": "SNOMEDCT",
+            "Coded_string": "229797004"
+          },
+          "Route": {
+            "Value": "Administration of drug or medicament via oral route (procedure)",
+            "Terminology_id": "SNOMEDCT",
+            "Coded_string": "386359008"
+          },
+          "Description": null,
+          "TotalNumber": {
+            "Magnitude": 200,
+            "MagnitudeStatus": null,
+            "Unit": "Vial"
+          }
+        }
+      ],
+      "ExpiryDate": null,
+      "Repeats": null
+    },
+    "Diagnosis": null
+  },
+  "xmlns": null
+}
