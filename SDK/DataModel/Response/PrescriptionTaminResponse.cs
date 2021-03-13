@@ -21,6 +21,6 @@ namespace Ditas.SDK.DataModel
         [JsonProperty("head_EPRSC_ID")]
         public string HeadEprscId { get; set; }
 
-        internal string FullErrorMessage => (ErrorCode + " " + ErrorMessage + " " + ComplemantaryMsg)?.Trim();
+        internal string FullErrorMessage => $"ErrorCode:[{ErrorCode}], ErrorMessage:[{ErrorMessage}], ComplemantaryMsg:[{ComplemantaryMsg}]"?.Trim();
     }
 }

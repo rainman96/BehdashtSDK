@@ -7,24 +7,32 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
+using static Ditas.SDK.Constants.Enumarations;
 
 namespace Ditas.SDK.Services
 {
     internal class RestApiChannel : IServiceConfiguration, ICheckToken, IRestApiChannel
     {
 
+        private static readonly ILog _log = LogManager.GetLogger(nameof(RestApiChannel));
         private static TokenManager _tokenManager;
 
         public IRestResponse CallWebApi(ApiHeader header, ApiRequest apiRequest)
         {
+             _LogIfAvailiable("calling webapi service",LogLevel.Debug);
             var (isValid, message, _) = ValidateInputs(header, apiRequest);
             if (isValid == false)
-                throw new ArgumentException(message);
+                throw new SdkException(message);
+
+             _LogIfAvailiable("Inputs are valid", LogLevel.Debug);
+
             if ((_tokenManager?.GetTokenState() ?? TokenManager.TokenState.Empty) == TokenManager.TokenState.Empty)
-                throw new Exception("Token is empty");
+                throw new SdkException("Token is empty");
 
             //Log.Debug($"Calling CallWebApiGet({address},data,method,token)");
             string _base = AppConfiguration.WebServiceBaseAddress;
+
             var client = new RestClient($"{(_base.EndsWith("/") ? _base : _base + "/")}{(header.ApiUrl.StartsWith("/") ? header.ApiUrl.Remove(0, 1) : header.ApiUrl)}");
             var request = new RestRequest(header.ApiMethodType);
             request.AddHeader("cache-control", "no-cache");
@@ -46,28 +54,64 @@ namespace Ditas.SDK.Services
             {
                 case TokenManager.TokenState.Expired:
                 case TokenManager.TokenState.Empty:
+                    _LogIfAvailiable("Get token by new",LogLevel.Debug);
                     Interlocked.Exchange(ref _tokenManager, GetNewTokenByUsername());
                     break;
                 case TokenManager.TokenState.NearExpire:
+                    _LogIfAvailiable("Get token by refresh", LogLevel.Debug);
                     Interlocked.Exchange(ref _tokenManager, GetNewTokenByRefresh());
                     break;
                 case TokenManager.TokenState.Ok:
+                    _LogIfAvailiable("Token is valid",LogLevel.Debug);
                     break;
                 default:
-                    throw new NullReferenceException("The token is not in the predicted state");
+                    throw new SdkException("The token is not in the predicted state");
             }
+            _LogIfAvailiable("Token Ok!");
             return this;
         }
 
         public ICheckToken CheckConfiguration()
         {
+            _LogIfAvailiable("Checking Configuration",LogLevel.Debug);
+
             var state = AppConfiguration.IsValid();
             if (state.State)
                 return this;
-            throw new NullReferenceException(state.Message);
+            throw new SdkException(state.Message);
         }
 
         #region Private
+        private void _LogIfAvailiable(string msg, LogLevel logLevel = LogLevel.Info)
+        {
+            if (AppConfiguration.ActiveLog)
+            {
+                switch (logLevel)
+                {
+                    case LogLevel.Info:
+                        _log.Info(msg);
+                        break;
+                    case LogLevel.Warn:
+                        _log.Warn(msg);
+                        break;
+                    case LogLevel.Debug:
+                        _log.Debug(msg);
+                        break;
+                    case LogLevel.Error:
+                        _log.Error(msg);
+                        break;
+                    case LogLevel.Fatal:
+                        _log.Fatal(msg);
+                        break;
+                    case LogLevel.All:
+                        _log.Info(msg);
+                        break;
+                    case LogLevel.Off:
+                    default:
+                        break;
+                }
+            }
+        }
         private (bool State, string Message, string FieldName) ValidateInputs(ApiHeader header, ApiRequest apiRequest)
         {
             var headerValidationresult = header.IsValid();
@@ -88,7 +132,7 @@ namespace Ditas.SDK.Services
                 return new TokenManager(res.Model.AccessToken, res.Model.RefreshToken, res.Model.ExpiresIn);
             }
             else
-                throw new Exception("Loggin failed...");
+                throw new SdkException("Loggin failed...");
         }
         private TokenManager GetNewTokenByUsername()
         {
@@ -98,16 +142,16 @@ namespace Ditas.SDK.Services
                 return new TokenManager(res.Model.AccessToken, res.Model.RefreshToken, res.Model.ExpiresIn);
             }
             else
-                throw new Exception("Loggin failed...");
+                throw new SdkException("Loggin failed...");
         }
         private GeneralResponse<OAuthResponse> LoginFromConfig()
         {
             string baseUrl = AppConfiguration.WebServiceBaseAddress;
             string url = AppConfiguration.LoginApiUrl;
             if (string.IsNullOrEmpty(baseUrl))
-                throw new NullReferenceException("WebApiService address is empty");
+                throw new SdkException("WebApiService address is empty");
             if (string.IsNullOrEmpty(AppConfiguration.LoginApiUrl))
-                throw new NullReferenceException("Login api address is empty");
+                throw new SdkException("Login api address is empty");
 
             var client = new RestClient($"{(baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/")}{(url.StartsWith("/") ? url.Remove(0, 1) : url)}");
             var request = new RestRequest(Method.POST);
@@ -125,7 +169,7 @@ namespace Ditas.SDK.Services
             else
             {
                 if (response.ErrorException != null) throw response.ErrorException;
-                throw new Exception("Loggin failed");
+                throw new SdkException("Loggin failed");
             }
             gResponse.HttpCode = (int)response.StatusCode;
             return gResponse;
@@ -135,9 +179,9 @@ namespace Ditas.SDK.Services
             string baseUrl = AppConfiguration.WebServiceBaseAddress;
             string url = AppConfiguration.LoginApiUrl;
             if (string.IsNullOrEmpty(baseUrl))
-                throw new NullReferenceException("WebApiService address is empty");
+                throw new SdkException("WebApiService address is empty");
             if (string.IsNullOrEmpty(AppConfiguration.LoginApiUrl))
-                throw new NullReferenceException("Login api address is empty");
+                throw new SdkException("Login api address is empty");
 
             var client = new RestClient($"{(baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/")}{(url.StartsWith("/") ? url.Remove(0, 1) : url)}");
             var request = new RestRequest(Method.POST);
@@ -154,7 +198,7 @@ namespace Ditas.SDK.Services
             else
             {
                 if (response.ErrorException != null) throw response.ErrorException;
-                throw new Exception("Loggin failed");
+                throw new SdkException("Loggin failed");
             }
             gResponse.HttpCode = (int)response.StatusCode;
             return gResponse;

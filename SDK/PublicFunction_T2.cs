@@ -24,11 +24,11 @@ namespace Ditas.SDK
                     break;
                 case ChannelType.Soap:
                 default:
-                    throw new NotSupportedException("Not supported yet");
+                    throw new SdkException("Not supported yet");
             }
         }
 
-        #region Faze1
+        // Faze1
         /// <summary>
         ///          This method is developed in order to exchange the prescribed medications. This method has particular usage in eprescription that manages the whole process from prescribing the medicinal product to dispensing it.
         ///          </summary>
@@ -36,11 +36,20 @@ namespace Ditas.SDK
         ///          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
         public ResultVO SaveMedicationPrescription(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
         {
-            string MethodName = "SaveMedicationPrescription";
+            string methodName = "SaveMedicationPrescription";
             try
             {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_MEDICATION_PRESCRIPTION_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_MEDICATION_PRESCRIPTION_SECURE_URL];
+
+                var resultSepas = ToSepas(MedicationPrescriptionsMessage, pid, url);
+
                 InsuranceType organizationType = Utilities.GetOrganizationType(MedicationPrescriptionsMessage.Composition.Insurance.Insurer.Coded_string);
                 ResultVO result = new ResultVO();
+                _LogIfAvailiable($"InsuranceType: {organizationType}", LogLevel.Info);
+
                 switch (organizationType)
                 {
                     case InsuranceType.Tamin:
@@ -52,36 +61,44 @@ namespace Ditas.SDK
                     case InsuranceType.NirohayeMosallah:
                     case InsuranceType.Azad:
                     default:
-                        throw new NotImplementedException($"this Insurance [Coded String:{(int)organizationType} Not implemented in current version");
+                        throw new SdkException($"this Insurance [Coded String:{(int)organizationType} Not implemented in current version");
                 }
 
-                _LogIfAvailiable("CallHIX Total Time");
-                return result;//TODO Change 
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result.JoinToSepasResult(resultSepas);//TODO Change 
             }
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
         }
         private ResultVO GetSalamt(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
         {
+
+            _LogIfAvailiable($"Get Salamt Service", LogLevel.Debug);
+
             var request = Mappers.ServiceModelMapper.ToDrugSalamat(MedicationPrescriptionsMessage);
 
             var header = new ApiHeader(
                 AppConfiguration.PID(ConstatKeyValues.SALAMAT_PACKAGE_ID),
                 ConfigurationManager.AppSettings[ConstatKeyValues.DRUG_SALAMAT_SERVICE_URL]);
+            _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             if (preResponse.StatusCode != HttpStatusCode.OK)
             {
-                throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
             }
             var response = ConvertToModel<DrugSalamatResponse>(preResponse.Content);
+            _LogIfAvailiable($"Return Salamt Service", LogLevel.Debug);
+
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
         private ResultVO GetPrescriptionTamin(MedicationPrescriptionsMessageVO MedicationPrescriptionsMessage)
         {
+            _LogIfAvailiable($"Get Tamin Service", LogLevel.Debug);
+
             var request = Mappers.ServiceModelMapper.ToPrescriptionTamin(MedicationPrescriptionsMessage);
             var header = new ApiHeader(
                 AppConfiguration.PID(ConstatKeyValues.Prescription_Tamin_Package_ID),
@@ -90,9 +107,10 @@ namespace Ditas.SDK
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             if (preResponse.StatusCode != HttpStatusCode.OK)
             {
-                throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
             }
             var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
+            _LogIfAvailiable($"Return Tamin Service", LogLevel.Debug);
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
 
@@ -104,37 +122,47 @@ namespace Ditas.SDK
         ///          <returns>The demographic information is returned in PersonVO class.</returns>
         public PersonVO GetPersonByBirth(string NationalCode, int BirthYear)
         {
-            string MethodName = "GetPersonByBirth";
+            string methodName = "GetPersonByBirth";
+            RestSharp.IRestResponse preResponse = null;
+
             try
             {
+
+                _LogIfAvailiable($"Start {methodName} Service");
                 RequestPersonInformation request = Mappers.ServiceModelMapper.GetPersonRequest(NationalCode, BirthYear);
-
-
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
-                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
-                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url, "SabtahvalPackageID");
-
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.SABT_AHVAL_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.PERSON_SERVICE_URL]);
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var response = ConvertToModel<GetEstelam3Response>(preResponse.Content, "getEstelam3Response", "return");
 
                 var result = Mappers.ClientModelMapper.ToPersonVo(response);
-                _LogIfAvailiable("CallHIX Total Time");
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
         }
+
+
+
         /// <summary>
         ///          This method is used to generate HID for a patient's encounter. This method can be used for both the inpatient and outpatient encounters.
         ///          </summary>
@@ -148,28 +176,36 @@ namespace Ditas.SDK
         [Obsolete("GetHID method with InquiryID parameter is deprecated, please use overloaded method instead.")]
         public DO_IDENTIFIER GetHID(string NationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, string InquiryID, DO_IDENTIFIER ReferralID)
         {
-            string MethodName = "GetHID";
+            string methodName = "GetHID";
+            RestSharp.IRestResponse preResponse = null;
             try
             {
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+                _LogIfAvailiable($"Start {methodName} Service");
                 HIDRequest request = Mappers.ServiceModelMapper.GetHIDRequest(NationalCode, HealthCareProvider, Insurer, GetHealthCareFacility());
                 var header = new ApiHeader(AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID), ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
-                _LogIfAvailiable("CallHIX Total Time");
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
             }
         }
 
@@ -181,43 +217,42 @@ namespace Ditas.SDK
         ///          <param name="Insurer">The first argument to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
         ///          <param name="ReferralID">This property is used to for the referred patients. If the patient has encountered a healthcare facility by referral system, it is mandatory to specify the referralID of the patient.</param>
         ///          <returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
+        ///          
         public DO_IDENTIFIER GetHID(string NationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
         {
-            string MethodName = "GetHID";
+            string methodName = "GetHID";
+            RestSharp.IRestResponse preResponse = null;
             try
             {
-                var request = new HIDRequest
-                {
-                    ClientIp = Utilities.GetClientIp(),
-                    AppUser = "ditas",
-                    HcpID = HealthCareProvider,
-                    InsurerID = Insurer,
-                    OrgID = ReferralID,
-                    PersonID = new DO_IDENTIFIER { ID = NationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
-                };
+                _LogIfAvailiable("Call Service [" + methodName + "]...");
+                HIDRequest request = Mappers.ServiceModelMapper.GetHIDRequest(NationalCode, HealthCareProvider, Insurer, GetHealthCareFacility());
 
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
-                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
-                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
-                var result = response.IsSuccess ? response.Data : null;
-                _LogIfAvailiable("CallHIX Total Time");
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
             }
         }
 
@@ -232,35 +267,368 @@ namespace Ditas.SDK
         ///<returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
         public DO_IDENTIFIER GetHIDurgent(DO_IDENTIFIER PersonID, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
         {
-            string MethodName = "GetHIDurgent";
+            string methodName = "GetHIDurgent";
+            RestSharp.IRestResponse preResponse = null;
             try
             {
 
                 HIDRequest request = Mappers.ServiceModelMapper.GetHIDRequest(PersonID, HealthCareProvider, Insurer, GetHealthCareFacility());
 
 
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+                _LogIfAvailiable($"Start {methodName} Service");
                 //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
                 //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
-                var result = response.IsSuccess ? response.Data : null;
-                _LogIfAvailiable("CallHIX Total Time");
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+
+
+        /// <summary>
+        ///          This method is used to generate a list of batch HIDs as reserved HIDs to be used when the Insurance Services are not available.
+        ///          </summary>
+        ///          <param name="Insurer">The first argument to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
+        ///          <param name="Count">The number of the required reserved HIDs is specified through this argument.</param>
+        ///          <returns>The output is a list of reserved HIDs. The datatype to this object is ReserveHIDlistVO</returns>
+        public ReserveHIDlistVO GenerateBatchHID(DO_CODED_TEXT Insurer, int Count)
+        {
+            string methodName = "GenerateBatchHID";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                BatchHIDRequest request = Mappers.ServiceModelMapper.GetBatchHIDRequest(Insurer, GetHealthCareFacility(), Count);
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.BATCH_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.BATCH_HID_PACKAGE_ID]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return new ReserveHIDlistVO();//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        /// This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
+        /// </summary>
+        /// <param name="HID">Specifies the HID that requires update. The data type is DO_IDENTIFIER.</param>
+        /// <param name="nationalCode">This argument specifies the patient's national code. the data type is in string format.</param>
+        /// <param name="HealthCareProvider">The argument to this method is the identifier of the healthcare provider. The healthcare provider identifier is RWI (Real World Identifier) and the data type is DO_IDENTIFIER.</param>
+        /// <param name="Insurer">one of the arguments to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
+        /// <returns>The method returns boolean which indicates if the process was successful.</returns>
+        public bool UpdateHID(DO_IDENTIFIER HID, string nationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
+        {
+            string methodName = "UpdateHID";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                UpdateHIDRequest request = Mappers.ServiceModelMapper.GetUpdateHIDRequest(HID, nationalCode, HealthCareProvider, Insurer, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.UPDATE_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.UPDATE_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        ///          This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
+        ///          </summary>
+        ///          <param name="HID">Specifies the HID that requires update. The data type is DO_IDENTIFIER.</param>
+        ///          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
+        ///          <param name="HealthCareProvider">The argument to this method is the identifier of the healthcare provider. The healthcare provider identifier is RWI (Real World Identifier) and the data type is DO_IDENTIFIER.</param>
+        ///          <param name="Insurer">one of the arguments to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
+        ///          <returns>The method returns boolean which indicates if the process was successful.</returns>
+        public bool UpdateHID(DO_IDENTIFIER HID, DO_IDENTIFIER PersonID, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
+        {
+            string methodName = "UpdateHID";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                UpdateHIDRequest request = Mappers.ServiceModelMapper.GetUpdateHIDRequest(HID, PersonID, HealthCareProvider, Insurer, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.UPDATE_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.UPDATE_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        ///          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
+        ///          </summary>
+        ///          <param name="NationalCode">This arguement is to specify the nationalcode of the patient in string format.</param>
+        ///          <param name="HID">The HID is the Health Tracking ID that is assigned to any patient encounter to the healthcare system. This ID is generated based on the patient's and the healthcare provider's eligiblity to receive/provide healthcare services. Generating this ID corresponds to using the patient's insurance booklet.</param>
+        ///          <param name="Reason">In order to eliminate an assigned HID, a reason should be prvided to specify why the ID is being eliminated. The reason should be specified with DO_CODED_TEXT data type.</param>
+        ///          <param name="Description">The additional description on the elimination process and the additional comments can be specified through the Description argument.</param>
+        ///          <returns>The result of the method is boolean which specifies if the elimination process was successful or not.</returns>
+        public bool EliminateHID(string NationalCode, DO_IDENTIFIER HID, DO_CODED_TEXT Reason, string Description)
+        {
+            string methodName = "EliminateHID";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                EliminateHIDRequest request = Mappers.ServiceModelMapper.GetEliminateHIDRequest(NationalCode, HID, Reason, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.ELIMINATE_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.ELIMINATE_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        ///          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
+        ///          </summary>
+        ///          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
+        ///          <param name="HID">The HID is the Health Tracking ID that is assigned to any patient encounter to the healthcare system. This ID is generated based on the patient's and the healthcare provider's eligiblity to receive/provide healthcare services. Generating this ID corresponds to using the patient's insurance booklet.</param>
+        ///          <param name="Reason">In order to eliminate an assigned HID, a reason should be prvided to specify why the ID is being eliminated. The reason should be specified with DO_CODED_TEXT data type.</param>
+        ///          <param name="Description">The additional description on the elimination process and the additional comments can be specified through the Description argument.</param>
+        ///          <returns>The result of the method is boolean which specifies if the elimination process was successful or not.</returns>
+        public bool EliminateHID(DO_IDENTIFIER PersonID, DO_IDENTIFIER HID, DO_CODED_TEXT Reason, string Description)
+        {
+            string methodName = "EliminateHID";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                EliminateHIDRequest request = Mappers.ServiceModelMapper.GetEliminateHIDRequest(PersonID, HID, Reason, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.ELIMINATE_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.ELIMINATE_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        ///          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
+        ///          </summary>
+        ///          <param name="HID">indicates the HID that is going to be verified. It is of type DO_IDENTIFIER.</param>
+        ///          <param name="NationalCode">This argument specifies the patient's national code. the data type is in string format.</param>
+        ///          <returns>This method returns the status of the HID as DO_CODED_TEXT. The terminology is available on http://coding.behdasht.gov.ir</returns>
+        public DO_CODED_TEXT VerifyHIDStatus(DO_IDENTIFIER HID, string NationalCode)
+        {
+            string methodName = "VerifyHIDStatus";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                VerifyHIDRequest request = Mappers.ServiceModelMapper.GetVerifyHIDRequest(NationalCode, HID, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.VERIFY_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.VERIFY_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+        /// <summary>
+        ///          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
+        ///          </summary>
+        ///          <param name="HID">indicates the HID that is going to be verified. It is of type DO_IDENTIFIER.</param>
+        ///          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
+        ///          <returns>This method returns the status of the HID as DO_CODED_TEXT. The terminology is available on http://coding.behdasht.gov.ir</returns>
+        public DO_CODED_TEXT VerifyHIDStatus(DO_IDENTIFIER HID, DO_IDENTIFIER PersonID)
+        {
+            string methodName = "VerifyHIDStatus";
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                VerifyHIDRequest request = Mappers.ServiceModelMapper.GetVerifyHIDRequest(PersonID, HID, GetHealthCareFacility());
+
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(
+                    AppConfiguration.PID(ConstatKeyValues.VERIFY_HID_PACKAGE_ID),
+                    ConfigurationManager.AppSettings[ConstatKeyValues.VERIFY_HID_SERVICE_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
+                var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
             }
         }
 
@@ -276,10 +644,12 @@ namespace Ditas.SDK
         {
 
 
-            string MethodName = "CallupInsurance";
+            string methodName = "CallupInsurance";
+            RestSharp.IRestResponse preResponse = null;
+
             try
             {
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+                _LogIfAvailiable($"Start {methodName} Service");
 
                 DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
                 InsuranceInquiryRequest request = Mappers.ServiceModelMapper.ToInsuranceRequest(PersonID, ProviderID, Healthcarefacility);
@@ -287,10 +657,12 @@ namespace Ditas.SDK
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.HID_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.CALL_UP_INSURANCE_URL]);
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse.Content, "data");
 
@@ -299,14 +671,20 @@ namespace Ditas.SDK
                     var cause = ConvertToModel<CallUpFailedResponse>(preResponse.Content);
                     result = new List<InsuranceInquiryVO> { new InsuranceInquiryVO { ErrorMessage = cause.message[0] } };
                 }
-                _LogIfAvailiable("CallHIX Total Time");
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result.ToArray();
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
             }
         }
 
@@ -318,42 +696,451 @@ namespace Ditas.SDK
         ///          <returns>This method returns the healthcare provider information. The data type is HealthcareProviderVO.</returns>
         public HealthcareProviderVO GetHealthCareProviderInfo(DO_IDENTIFIER ProviderID)
         {
-            string MethodName = "GetHealthCareProviderInfo";
+            string methodName = "GetHealthCareProviderInfo";
+            RestSharp.IRestResponse preResponse = null;
             try
             {
 
                 MemberInfoByMcRequest request = Mappers.ServiceModelMapper.GetMemberInfoRequest(ProviderID);
 
 
-                _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+                _LogIfAvailiable($"Start {methodName} Service");
                 //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
                 //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
                 var header = new ApiHeader(
                     AppConfiguration.PID(ConstatKeyValues.NEZAM_PEZESHKI_PACKAGE_ID),
                     ConfigurationManager.AppSettings[ConstatKeyValues.GET_MEMBER_NEZAMPEZESHKI_URL]);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
-                var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 if (preResponse.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new Exception($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
                 }
                 var response = ConvertToModel<MemberInfoByMcResponse>(preResponse.Content, "GetMemberInfoByMcCodeNumericTypeEnResponse", "GetMemberInfoByMcCodeNumericTypeEnResult");
 
                 if (response.ReturnValue == null)
-                    throw new NullReferenceException(response.Message);
+                    throw new SdkException(response.Message);
                 HealthcareProviderVO result = Mappers.ClientModelMapper.HealthcareProviderVO(response);
-                _LogIfAvailiable("CallHIX Total Time");
+                _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
             {
-                _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+
+
+
+
+        /// <summary>
+        ///          This method is developed to exchange the BillSaummary data of patient encounters to healthcare faclities either inpatient or outpatients. The costs and contributions of all entities involved in heathcare delivery process including the patient, the basic insurance, the complemtary insurance, etc are detailed through this method.
+        ///          </summary>
+        ///          <param name="PatientBillMessage">This argument is of type PatientBillMessageVO which consists of demographics, insurance, admission, discharge, diagnosis, billsummary, service details, etc.</param>
+        ///          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SavePatientBill(PatientBillMessageVO PatientBillMessage)
+        {
+            var methodName = "SavePatientBill";
+            try
+            {
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_PATIENT_BILL_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_PATIENT_BILL_SECURE_URL];
+                return ToSepas(PatientBillMessage, pid, url);
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        ///This method is used to save the patient admissions to inpatient facilities. this method is called when an event of patient admission in hospitals is trigerred.
+        ///</summary>
+        ///<param name="AdmittedMessage">The argument to save admitted message is of typ AdmittedMessageVO. It consists of petient demographic info, Insurance data and admission information.</param>
+        ///<returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveAdmittedMessage(AdmittedMessageVO AdmittedMessage)
+        {
+            var methodName = "SaveAdmittedMessage";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_ADMITTED_MESSAGE_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_ADMITTED_MESSAGE_SECURE_URL];
+                var result = ToSepas(AdmittedMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
         }
 
-        #endregion
+        private ResultVO ToSepas(object message, string SepasPackageId, string url)
+        {
+            var methodName = "To Sepas";
+
+            RestSharp.IRestResponse preResponse = null;
+            try
+            {
+                SaveSepasSecureRequest request = Mappers.ServiceModelMapper.SaveSepasSecureRequest(message);
+                _LogIfAvailiable($"Start {methodName} Service");
+                //var response = srv.CallWebApi<Rootobject<Getestelam3response>>(ToJsonRequest(request), url, Token);
+                //var preResponse = srv.FactoryApiChannel().CheckToken().CallWebApi(ToJsonRequest(request), url,  "BimehSalamatPackageID");
+                var header = new ApiHeader(SepasPackageId, url);
+                _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
+
+                preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+                if (preResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                }
+                var response = ConvertToModel<ResultVO>(preResponse.Content);
+                _LogIfAvailiable($"End {methodName} Service");
+                return response;//TODO Change 
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+            finally
+            {
+#if LOG
+                _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+#endif
+            }
+        }
+
+        /// <summary>
+        /// This method is used to exchange the data regarding death certificates of individuals.
+        /// </summary>
+        /// <param name="DeathCertificateMessage">This argument is of type DeathCertificateMessageVO. This type is developed to specify the information regarding death status, underlying causes of death, person's demographic, burial attestation, etc.</param>
+        /// <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveDeathCertificate(DeathCertificateMessageVO DeathCertificateMessage)
+        {
+            var methodName = "SaveDeathCertificate";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_DEATH_CERTIFICATE_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_DEATH_CERTIFICATE_SECURE_URL];
+                var result = ToSepas(DeathCertificateMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        ///This method is to exchange the care data regarding dental healthcare services.
+        ///</summary>
+        ///<param name="DentalCareMessage">The argument of this method is of type DentaCareMessageVO that consists of several other classes including the patient's demographic, admissions, dental diagnosis, treatment plans, etc.</param>
+        ///<returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveDentalCase(DentalCareMessageVO DentalCareMessage)
+        {
+            var methodName = "SaveDentalCase";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_DENTAL_CARE_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_DENTAL_CARE_SECURE_URL];
+                var result = ToSepas(DentalCareMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        ///This method is developed to exchange the dispensed prescription. It is designed to be used by pharmacies to send the dispensed medications data along with their costs.
+        ///</summary>
+        ///<param name="DispensedPrescriptionsMessage">The argument of this method is of type DispensedPrescriptionMessageVO. it consists of several classes including: patient demographic, dispensed prescriptions data, costs per medicinal products, insurance data of the patient, etc.</param>
+        ///<returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveDispensedPrescription(DispensedPrescriptionsMessageVO DispensedPrescriptionsMessage)
+        {
+            var methodName = "SaveDispensedPrescription";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_DISPENSED_PRESCRIPTION_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_DISPENSED_PRESCRIPTION_SECURE_URL];
+                var result = ToSepas(DispensedPrescriptionsMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+
+        /// <summary>        
+        /// This method is designed to send the insurer reimbursement for patient bills.        
+        /// </summary>        
+        /// <param name="InsurerReimbursementMessage">This argument specifies the reimbursement info. This argument is of type InsurerReimbursementMessageVO.</param>        
+        /// <returns>The method returns the result of the transaction as a ResultVO.</returns>
+        public ResultVO SendInsurerReimbursement(InsurerReimbursementMessageVO InsurerReimbursementMessage)
+        {
+            var methodName = "SendInsurerReimbursement";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_INSURER_REIMBURSEMENT_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_INSURER_REIMBURSEMENT_SECURE_URL];
+                var result = ToSepas(InsurerReimbursementMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>        
+        /// This method is designed to save the laboratory prescriptions.        
+        /// </summary>        
+        /// <param name="LaboratoryPrescriptionsMessage">This argument specifies the laboratoty prescription. This argument is of type LaboratoryPrescriptionsMessageVO.</param>        
+        /// <returns>The method returns the result of the transaction as a ResultVO.</returns>
+        public ResultVO SaveLaboratoryPrescriptions(LaboratoryPrescriptionsMessageVO LaboratoryPrescriptionsMessage)
+        {
+            var methodName = "SaveLaboratoryPrescriptions";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_LABORATORY_PRESCRIPTION_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_LABORATORY_PRESCRIPTION_SECURE_URL];
+
+
+                var result = ToSepas(LaboratoryPrescriptionsMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is developed to save the laboratory result tests. this method can accept any type of medical laboratory results from microbial to pathology test,, etc.
+        /// </summary>
+        /// <param name="LaboratoryResultMessage">The LaboratoryResultMessageVO is the data type of the input argument. it is designed so that it can exchange any type of test. This class consists of several other classes such as petient's demographic, lab test result, specimen details, admission, insurance, etc. the lab test result is an abstract class that all medical lab tets are the specializations of it.</param>
+        /// <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveLaboratoryResult(LaboratoryResultMessageVO LaboratoryResultMessage)
+        {
+            var methodName = "SaveLaboratoryResult";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_LABORATORY_RESULT_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_LABORATORY_RESULT_SECURE_URL];
+                var result = ToSepas(LaboratoryResultMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>        
+        /// This method is designed to save the medical imaging prescriptions.        
+        /// </summary>        
+        /// <param name="ImagingPrescriptionsMessage">This argument specifies the imaging prescriptions. This argument is of type ImagingPrescriptionsMessageVO.</param>        
+        /// <returns>The method returns the result of the transaction as a ResultVO.</returns>
+        public ResultVO SaveMedicalImagingPrescriptions(ImagingPrescriptionsMessageVO ImagingPrescriptionsMessage)
+        {
+            var methodName = "SaveMedicalImagingPrescriptions";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_MEDICAL_IMAGE_PRESCRIPTION_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_MEDICAL_IMAGE_PRESCRIPTION_SECURE_URL];
+                var result = ToSepas(ImagingPrescriptionsMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        /// This method is designed to send the pathology reports. The pathology reports are for malignant and benign specimen.
+        /// </summary>
+        /// <param name="PathologyReport">The argument is of type LaboratoryResultMessageVO. Only pathology results are allowed to to be exchanged by this method.</param>
+        /// <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SavePathologyReport(LaboratoryResultMessageVO PathologyReport)
+        {
+            var methodName = "SavePathologyReport";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_PATHOLOGY_REPORT_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_PATHOLOGY_REPORT_SECURE_URL];
+                var result = ToSepas(PathologyReport, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        /// This method is used to exchange the patient that is referref from a primary healthcare facility for the secondary healthcare service to a specialist.
+        /// </summary>
+        /// <param name="ReferralCaseMessage">This argument specifies the patient's encunter to the primary healthcare facilities from which the patient is being referred.</param>
+        /// <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO ReferPatientRecord(ReferralCaseMessageVO ReferralCaseMessage)
+        {
+            var methodName = "ReferPatientRecord";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_REFERRAL_CASE_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_REFERRAL_CASE_SECURE_URL];
+                var result = ToSepas(ReferralCaseMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>        
+        /// This method is designed to save the ambulance mission.        
+        /// </summary>        
+        /// <param name="AmbulanceMessage">This argument specifies the Information of the mission. This argument is of type AmbulanceServiceMessageVO.</param>        
+        /// <returns>The method returns the result of the transaction as a ResultVO.</returns>
+        public ResultVO SaveAmbulanceMission(AmbulanceServiceMessageVO AmbulanceMessage)
+        {
+            var methodName = "SaveAmbulanceMission";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_AMBULANCE_MESSAGE_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_AMBULANCE_MESSAGE_SECURE_URL];
+                var result = ToSepas(AmbulanceMessage, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method is designed to interchange the SIYAB reports for PHC systems. It is designed so that the primary healthcare services that are provided to the patient as well as any clinical findings, physical exams, etc. for the pateints' encounters.
+        /// </summary>
+        /// <param name="SOAPReport">This argument is of type SOAPMessageVO, and is designed to the purpose of exchanging the primary healthcare services provided by GPs or family physicians and primary healthcare facilities.</param>
+        /// <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveSIYABReport(SOAPMessageVO SOAPReport)
+        {
+            var methodName = "SaveSIYABReport";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_SIYAB_REPORT_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_SIYAB_REPORT_SECURE_URL];
+                var result = ToSepas(SOAPReport, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+        /// <summary>
+        ///          This method is designed to save and exchange the clinical data regarding the patients' encounters.
+        ///          </summary>
+        ///          <param name="SOAPReport">This argument is to exchange the SOAP messages. SOAP stands for "Subjective Objective Assessment, Plan" which are the building blocks of the actions taken by clinical healthcare providers.</param>
+        ///          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
+        public ResultVO SaveSOAPReport(SOAPMessageVO SOAPReport)
+        {
+            var methodName = "SaveSOAPReport";
+            try
+            {
+                _LogIfAvailiable($"Start {methodName} Service");
+
+                var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_SOAP_REPORT_PACKAGE_ID);
+                var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_SOAP_REPOR_TSECURE_URL];
+                var result = ToSepas(SOAPReport, pid, url);
+                _LogIfAvailiable($"End {methodName} Service\r\n");
+                return result;
+            }
+            // ------------------------part2------------------------------------------
+            catch (Exception ex)
+            {
+                _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
+                throw;
+            }
+        }
+
+
+
+
+
+
         #region Other
 
         ///// <summary>
@@ -363,7 +1150,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
         //public ResultVO SavePatientBill(PatientBillMessageVO PatientBillMessage)
         //{
-        //    var MethodName = "SavePatientBill";
+        //    var methodName = "SavePatientBill";
         //    try
         //    {
         //        DO_IDENTIFIER Location = GetHealthCareFacility();
@@ -389,7 +1176,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //        throw;
         //    }
         //}
@@ -401,7 +1188,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the detailed information of the legal entities as a LegalPersonInfoVO.</returns>
         //public LegalPersonInfoVO GetLegalPersonInfoByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetLegalPersonInfoByNationalCode";
+        //    string methodName = "GetLegalPersonInfoByNationalCode";
         //    try
         //    {
         //        var request = new Personinformation { nationalCode = NationalCode };
@@ -409,14 +1196,14 @@ namespace Ditas.SDK
         //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
 
 
-        //        _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+        //        _LogIfAvailiable($"Start {methodName} Service");
         //        var result = srv.CallWebApi<LegalPersonInfoVO>(ToJsonRequest(request), url,  "SabtahvalPackageID");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //        throw;
         //    }
         //}
@@ -431,7 +1218,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the transaction was successful or not.</returns>
         //public bool VerifyPersonInfo(string NationalCode, string FirstName, string LastName, int BirthYear)
         //{
-        //    string MethodName = "VerifyPersonInfo";
+        //    string methodName = "VerifyPersonInfo";
         //    try
         //    {
         //        var request = new Personinformation { nationalCode = NationalCode, name = FirstName, family = LastName, birthDate = BirthYear.ToString() };
@@ -439,82 +1226,15 @@ namespace Ditas.SDK
         //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
 
 
-        //        _LogIfAvailiable("...Call Service Time [" + MethodName + "]");
+        //        _LogIfAvailiable($"Start {methodName} Service");
         //        var result = srv.CallWebApi<LegalPersonInfoVO>(ToJsonRequest(request), url, "SabtahvalPackageID");
-        //        _LogIfAvailiable("CallHIX Total Time");
+        //       _LogIfAvailiable($"End {methodName} Service\r\n");
         //        return result != null;//TODO Change 
         //    }
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //        throw;
-        //    }
-        //}
-
-
-        #region Old
-
-        /// <summary>
-        ///          This method is designed to interchange the SIYAB reports for PHC systems. It is designed so that the primary healthcare services that are provided to the patient as well as any clinical findings, physical exams, etc. for the pateints' encounters.
-        ///          </summary>
-        ///          <param name="SOAPReport">This argument is of type SOAPMessageVO, and is designed to the purpose of exchanging the primary healthcare services provided by GPs or family physicians and primary healthcare facilities.</param>
-        ///          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
-        //public ResultVO SaveSIYABReport(SOAPMessageVO SOAPReport)
-        //{
-        //    var MethodName = "SaveSIYABReport";
-        //    var url = ConfigurationManager.AppSettings["SIYABWebServiceURL"];
-        //    var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        //var srv= new WCF_SIYABService.SIYABServiceSoapClient(WCF_SIYABService.SIYABServiceSoapClient.EndpointConfiguration.SIYABServiceSoap);
-        //        // srv.Url = url;
-        //        //Dim v As New Variable
-        //        var systemId = SOAPReport.MsgID.SystemID.ID;// VariableService.GetSystemID();
-
-        //        /*
-        //            var headerMessageVOValue = new HeaderMessageVO();
-        //            headerMessageVOValue.Sender = new SystemSenderVO();
-        //            headerMessageVOValue.Sender.SystemID = systemId;
-        //            headerMessageVOValue.Sender.LocationID = Location.ID;
-        //            headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // '-------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER
-        //        {
-        //            Assigner = "MOHME_IT",
-        //            ID = systemId,
-        //            Issuer = "MOHME_IT",
-        //            Type = "System_ID"
-        //        };
-        //        LocationID = new DO_IDENTIFIER
-        //        {
-        //            Assigner = "MOHME_IT",
-        //            ID = this.HealthCareFacilityID,
-        //            Issuer = "MOHME_IT",
-        //            Type = "Org_ID"
-        //        };
-        //        //'-------------------------(End-PrimaryDefinition)------------------------'
-        //        //'-------------------------(Begin-MsgID)------------------------'
-        //        if (SOAPReport == null) throw new Exception("Object is null.");
-        //        if (SOAPReport.MsgID == null) throw new Exception("MsgID is null.");
-        //        SOAPReport.MsgID.HealthCareFacilityID = LocationID;
-        //        SOAPReport.MsgID.SystemID = SystemID;
-        //        //'-------------------------(End-MsgID)------------------------'
-        //        ResultVO result;
-        //        byte[] b;
-        //        WCF_SIYABService.SaveSIYABReportSecureRequest secureRequest = new WCF_SIYABService.SaveSIYABReportSecureRequest
-        //        {
-        //            data = b,
-        //        };
-        //        result = srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveSIYABReportSecure", Token, "SabtahvalPackageID");
-        //        //result = ClientModelMapper.ToClientResponse<ResultVO, WCF_SIYABService.ResultVO>(response.SaveSIYABReportSecureResult);
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
         //    }
         //}
         /// <summary>
@@ -524,7 +1244,7 @@ namespace Ditas.SDK
         ///          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
         //public ResultVO SavePatientBill2(PatientBillMessageVO PatientBillMessage)
         //{
-        //    var MethodName = "SavePatientBill2";
+        //    var methodName = "SavePatientBill2";
         //    try
         //    {
         //        DO_IDENTIFIER Location = GetHealthCareFacility();
@@ -559,7 +1279,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -612,7 +1332,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -667,7 +1387,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -719,372 +1439,16 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is developed to exchange the dispensed prescription. It is designed to be used by pharmacies to send the dispensed medications data along with their costs.
-        /////          </summary>
-        /////          <param name="DispensedPrescriptionsMessage">The argument of this method is of type DispensedPrescriptionMessageVO. it consists of several classes including: patient demographic, dispensed prescriptions data, costs per medicinal products, insurance data of the patient, etc.</param>
-        /////          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
-        //public ResultVO SaveDispensedPrescription(DispensedPrescriptionsMessageVO DispensedPrescriptionsMessage)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["DispensedPrescriptionServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-
-        //        // "/DispensedPrescriptionService.asmx";
-        //        // Dim v As New Variable
-        //        /* 
-        //            var headerMessageVOValue = new HeaderMessageVO();
-        //            headerMessageVOValue.Sender = new SystemSenderVO();
-        //            headerMessageVOValue.Sender.SystemID = VariableService.GetSystemID();
-        //            headerMessageVOValue.Sender.LocationID = Location.ID;
-        //            headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        // Dim LocationName As String
-        //        // LocationName = "مرکز ارائه دهنده خدمت مجازی جهت تبادل اطلاعات تستی"
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = DispensedPrescriptionsMessage.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = Location.ID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (DispensedPrescriptionsMessage == null)
-        //            throw new Exception("Object is null.");
-        //        if (DispensedPrescriptionsMessage.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        DispensedPrescriptionsMessage.MsgID.HealthCareFacilityID = LocationID;
-        //        DispensedPrescriptionsMessage.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        // '------------------------ - (Begin - Institute)------------------------'
-        //        // If DispensedPrescriptionsMessage.Composition.Admission.Institute Is Nothing Then DispensedPrescriptionsMessage.Composition.Admission.Institute = New OrganizationVO
-        //        // DispensedPrescriptionsMessage.Composition.Admission.Institute.ID = New DO_IDENTIFIER
-        //        // DispensedPrescriptionsMessage.Composition.Admission.Institute.ID = LocationID
-        //        // DispensedPrescriptionsMessage.Composition.Admission.Institute.Name = LocationName
-        //        // '------------------------ - (Begin - Institute)------------------------'
-        //        ResultVO result;
-        //        Crypto sec = new Crypto();
-        //        byte[] b;
-        //        b = sec.SecuredObject(DispensedPrescriptionsMessage);
-        //        var secureRequest = new WCF_DispenseDprescriptionService.SaveDispensedPrescriptionSecureRequest
-        //        {
-        //            data = b,
-        //            //HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_DispenseDprescriptionService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        result = srv.CallWebApi<ResultVO>("", "SaveDispensedPrescriptionSecure", Token, "SabtahvalPackageID");
-        //        // result = ClientModelMapper.ToClientResponse<ResultVO, WCF_DispenseDprescriptionService.ResultVO>(response.SaveDispensedPrescriptionSecureResult);
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>        
-        /////          This method is designed to send the insurer reimbursement for patient bills.        
-        /////          </summary>        
-        /////          <param name="InsurerReimbursementMessage">This argument specifies the reimbursement info. This argument is of type InsurerReimbursementMessageVO.</param>        
-        /////          <returns>The method returns the result of the transaction as a ResultVO.</returns>
-        //public ResultVO SendInsurerReimbursement(InsurerReimbursementMessageVO InsurerReimbursementMessage)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["InsurerReimbursementServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-
-        //        //"/InsurerReimbursementService.asmx";
-        //        // Dim v As New Variable
-        //        /*
-        //                        var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = InsurerReimbursementMessage.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (InsurerReimbursementMessage == null)
-        //            throw new Exception("Object is null.");
-        //        if (InsurerReimbursementMessage.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        InsurerReimbursementMessage.MsgID.HealthCareFacilityID = LocationID;
-        //        InsurerReimbursementMessage.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        Data Encrypt_SymmetricKeyStr = new Data();
-        //        Data k = new Data(), iv = new Data();
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        /*
-        //                         if (Configuration.Security_Mode == Configuration.SecurityMode.PowerSecurity)
-        //                            headerMessageVOValue.Sender.URL = "http://ca.mohme.gov.ir/1/" + Encrypt_SymmetricKeyStr.ToBase64();
-        //        */
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        byte[] b;
-        //        SimpleSecureShell ssl = new SimpleSecureShell();
-        //        b = ssl.Dastine(InsurerReimbursementMessage);
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //        var secureRequest = new WCF_InsurerReimbursementService.SaveInsurerReimbursementSecureRequest
-        //        {
-        //            data = b,
-        //            //HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_InsurerReimbursementService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //var response = srv.SaveInsurerReimbursementSecure(secureRequest);
-        //        //return ClientModelMapper.ToClientResponse<ResultVO, WCF_InsurerReimbursementService.ResultVO>(response.SaveInsurerReimbursementSecureResult);
-        //        return srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveInsurerReimbursementSecure", Token, "SabtahvalPackageID");
-        //    }
-        //    // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>        
-        /////          This method is designed to save the laboratory prescriptions.        
-        /////          </summary>        
-        /////          <param name="LaboratoryPrescriptionsMessage">This argument specifies the laboratoty prescription. This argument is of type LaboratoryPrescriptionsMessageVO.</param>        
-        /////          <returns>The method returns the result of the transaction as a ResultVO.</returns>
-        //public ResultVO SaveLaboratoryPrescriptions(LaboratoryPrescriptionsMessageVO LaboratoryPrescriptionsMessage)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["LaboratoryPrescriptionServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-        //        // "/LaboratoryPrescriptionService.asmx";
-        //        // Dim v As New Variable
-        //        /*
-        //                         var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = LaboratoryPrescriptionsMessage.MsgID.SystemID.ID;// VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = LaboratoryPrescriptionsMessage.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (LaboratoryPrescriptionsMessage == null)
-        //            throw new Exception("Object is null.");
-        //        if (LaboratoryPrescriptionsMessage.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        LaboratoryPrescriptionsMessage.MsgID.HealthCareFacilityID = LocationID;
-        //        LaboratoryPrescriptionsMessage.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        Data Encrypt_SymmetricKeyStr = new Data();
-        //        Data k = new Data(), iv = new Data();
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        // -------------------------------------Generate HeaderMessage IP Temp --------------------------------
-        //        //IPHostEntry IPHost = Dns.GetHostEntry(Dns.GetHostName());
-        //        //headerMessageVOValue.Sender.IP = IPHost.AddressList[0].ToString(); // InternalIP
-        //        // -------------------------------------Generate HeaderMessage IP Temp --------------------------------
-        //        //if (Configuration.Security_Mode == Configuration.SecurityMode.PowerSecurity)
-        //        //    headerMessageVOValue.Sender.URL = "http://ca.mohme.gov.ir/1/" + Encrypt_SymmetricKeyStr.ToBase64();
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        byte[] b;
-        //        SimpleSecureShell ssl = new SimpleSecureShell();
-        //        b = ssl.Dastine(LaboratoryPrescriptionsMessage);
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //        var secureRequest = new WCF_LaboratoryPrescriptionService.SaveLaboratoryPrescriptionSecureRequest
-        //        {
-        //            data = b,
-        //            // HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_LaboratoryPrescriptionService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //var response = srv.SaveLaboratoryPrescriptionSecure(secureRequest);
-        //        //return ClientModelMapper.ToClientResponse<ResultVO, WCF_LaboratoryPrescriptionService.ResultVO>(response.SaveLaboratoryPrescriptionSecureResult);
-        //        return srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveLaboratoryPrescriptionSecure", Token, "SabtahvalPackageID");
-        //    }
-        //    // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is developed to save the laboratory result tests. this method can accept any type of medical laboratory results from microbial to pathology test,, etc.
-        /////          </summary>
-        /////          <param name="LaboratoryResultMessage">The LaboratoryResultMessageVO is the data type of the input argument. it is designed so that it can exchange any type of test. This class consists of several other classes such as petient's demographic, lab test result, specimen details, admission, insurance, etc. the lab test result is an abstract class that all medical lab tets are the specializations of it.</param>
-        /////          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
-        //public ResultVO SaveLaboratoryResult(LaboratoryResultMessageVO LaboratoryResultMessage)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["LaboratoryResultServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-
-        //        // "/LaboratoryResultService.asmx";
-        //        // Dim v As New Variable
-        //        /*
-        //                         var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = LaboratoryResultMessage.MsgID.SystemID.ID;// VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //        */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = LaboratoryResultMessage.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (LaboratoryResultMessage == null)
-        //            throw new Exception("Object is null.");
-        //        if (LaboratoryResultMessage.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        LaboratoryResultMessage.MsgID.HealthCareFacilityID = LocationID;
-        //        LaboratoryResultMessage.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        ResultVO result;
-        //        Crypto sec = new Crypto();
-        //        byte[] b;
-        //        b = sec.SecuredObject(LaboratoryResultMessage);
-        //        var secureRequest = new WCF_LaboratoryResultService.SaveLaboratoryResultSecureRequest
-        //        {
-        //            data = b,
-        //            //HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_LaboratoryResultService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //var response = srv.SaveLaboratoryResultSecure(secureRequest);
-        //        //result = ClientModelMapper.ToClientResponse<ResultVO, WCF_LaboratoryResultService.ResultVO>(response.SaveLaboratoryResultSecureResult);
-        //        result = srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveLaboratoryResultSecure", Token, "SabtahvalPackageID");
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>        
-        /////          This method is designed to save the medical imaging prescriptions.        
-        /////          </summary>        
-        /////          <param name="ImagingPrescriptionsMessage">This argument specifies the imaging prescriptions. This argument is of type ImagingPrescriptionsMessageVO.</param>        
-        /////          <returns>The method returns the result of the transaction as a ResultVO.</returns>
-        //public ResultVO SaveMedicalImagingPrescriptions(ImagingPrescriptionsMessageVO ImagingPrescriptionsMessage)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["MedicalImagePrescriptionServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-        //        //"/MedicalImagePrescriptionService.asmx";
-        //        // Dim v As New Variable
-        //        /*                var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //        */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = ImagingPrescriptionsMessage.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (ImagingPrescriptionsMessage == null)
-        //            throw new Exception("Object is null.");
-        //        if (ImagingPrescriptionsMessage.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        ImagingPrescriptionsMessage.MsgID.HealthCareFacilityID = LocationID;
-        //        ImagingPrescriptionsMessage.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        Data Encrypt_SymmetricKeyStr = new Data();
-        //        Data k = new Data(), iv = new Data();
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        // -------------------------------------Generate HeaderMessage IP Temp --------------------------------
-        //        //IPHostEntry IPHost = Dns.GetHostEntry(Dns.GetHostName());
-        //        //headerMessageVOValue.Sender.IP = IPHost.AddressList[0].ToString(); // InternalIP
-        //        // -------------------------------------Generate HeaderMessage IP Temp --------------------------------
-        //        //if (Configuration.Security_Mode == Configuration.SecurityMode.PowerSecurity)
-        //        //    headerMessageVOValue.Sender.URL = "http://ca.mohme.gov.ir/1/" + Encrypt_SymmetricKeyStr.ToBase64();
-        //        // -------------------------------------Generate HeaderMessage --------------------------------
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        byte[] b;
-        //        SimpleSecureShell ssl = new SimpleSecureShell();
-        //        b = ssl.Dastine(ImagingPrescriptionsMessage);
-        //        // -------------------------------------Encrypt Message--------------------------------
-        //        // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //        var secureRequest = new WCF_MedicalImagePrescriptionService.SaveMedicalImagePrescriptionSecureRequest
-        //        {
-        //            data = b,
-        //            // HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_MedicalImagePrescriptionService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //var response = srv.SaveMedicalImagePrescriptionSecure(secureRequest);
-        //        //return ClientModelMapper.ToClientResponse<ResultVO, WCF_MedicalImagePrescriptionService.ResultVO>(response.SaveMedicalImagePrescriptionSecureResult);
-        //        return srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveMedicalImagePrescriptionSecure", Token, "SabtahvalPackageID");
-        //    }
-        //    // -------------------------------------Send Message to SEPAS if needed--------------------------------
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
-        ///// <summary>
-        /////          This method is designed to send the pathology reports. The pathology reports are for malignant and benign specimen.
-        /////          </summary>
-        /////          <param name="PathologyReport">The argument is of type LaboratoryResultMessageVO. Only pathology results are allowed to to be exchanged by this method.</param>
-        /////          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
-        //public ResultVO SavePathologyReport(LaboratoryResultMessageVO PathologyReport)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["PathologyCaseReportServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
 
-        //        //"/PathologyCaseReportService.asmx";
-        //        // Dim v As New Variable
-        //        /*
-        //                        var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = PathologyReport.MsgID.SystemID.ID;// VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = PathologyReport.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (PathologyReport == null)
-        //            throw new Exception("Object is null.");
-        //        if (PathologyReport.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        PathologyReport.MsgID.HealthCareFacilityID = LocationID;
-        //        PathologyReport.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        ResultVO result;
-        //        Crypto sec = new Crypto();
-        //        byte[] b;
-        //        b = sec.SecuredObject(PathologyReport);
-        //        var secureRequest = new WCF_PathologyCaseReportService.SavePathologyReportSecureRequest
-        //        {
-        //            data = b,
-        //            // HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_PathologyCaseReportService.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //  var response = srv.SavePathologyReportSecure(secureRequest);
-        //        //result = ClientModelMapper.ToClientResponse<ResultVO, WCF_PathologyCaseReportService.ResultVO>(response.SavePathologyReportSecureResult);
-        //        result = srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SavePathologyReportSecure", Token, "SabtahvalPackageID");
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
+
+
+
+
+
         ///// <summary>
         /////          This method is used to exchange the patient that is referref from a primary healthcare facility for the secondary healthcare service to a specialist.
         /////          </summary>
@@ -1148,7 +1512,7 @@ namespace Ditas.SDK
         //    // -------------------------------------Send Message to SEPAS if needed--------------------------------
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -1205,68 +1569,15 @@ namespace Ditas.SDK
         //    // -------------------------------------Send Message to SEPAS if needed--------------------------------
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
-        ///// <summary>
-        /////          This method is designed to save and exchange the clinical data regarding the patients' encounters.
-        /////          </summary>
-        /////          <param name="SOAPReport">This argument is to exchange the SOAP messages. SOAP stands for "Subjective Objective Assessment, Plan" which are the building blocks of the actions taken by clinical healthcare providers.</param>
-        /////          <returns>The method returns an object of type ResultVO. ResultVO models the response of SEPAS nodes either successful or unsuccessful.</returns>
-        //public ResultVO SaveSOAPReport(SOAPMessageVO SOAPReport)
-        //{
-        //    try
-        //    {
-        //        DO_IDENTIFIER Location = GetHealthCareFacility();
-        //        var url = ConfigurationManager.AppSettings["SOAPServiceURL"];
-        //        var srv = adaptorFactory.GetWebService<RestApiChannel>(url);
-        //        //"/SOAPService.asmx";
-        //        // Dim v As New Variable
-        //        /*
-        //                        var headerMessageVOValue = new HeaderMessageVO();
-        //                        headerMessageVOValue.Sender = new SystemSenderVO();
-        //                        headerMessageVOValue.Sender.SystemID = VariableService.GetSystemID();
-        //                        headerMessageVOValue.Sender.LocationID = Location.ID;
-        //                        headerMessageVOValue.Sender.URL = "0";
-        //         */
-        //        // -------------------------(Begin-PrimaryDefinition)------------------------'
-        //        DO_IDENTIFIER SystemID, LocationID;
-        //        SystemID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = SOAPReport.MsgID.SystemID.ID, Issuer = "MOHME_IT", Type = "System_ID" };
-        //        LocationID = new DO_IDENTIFIER() { Assigner = "MOHME_IT", ID = HealthCareFacilityID, Issuer = "MOHME_IT", Type = "Org_ID" };
-        //        // -------------------------(End-PrimaryDefinition)------------------------'
-        //        // -------------------------(Begin-MsgID)------------------------'
-        //        if (SOAPReport == null)
-        //            throw new Exception("Object is null.");
-        //        if (SOAPReport.MsgID == null)
-        //            throw new Exception("MsgID is null.");
-        //        SOAPReport.MsgID.HealthCareFacilityID = LocationID;
-        //        SOAPReport.MsgID.SystemID = SystemID;
-        //        // -------------------------(End-MsgID)------------------------'
-        //        ResultVO result;
-        //        Crypto sec = new Crypto();
-        //        byte[] b;
-        //        b = sec.SecuredObject(SOAPReport);
-        //        var secureRequest = new WCF_SOAPservice.SaveSOAPReportSecureRequest
-        //        {
-        //            data = b,
-        //            // HeaderMessageVO = ServiceModelMapper.ToServiceHeader<WCF_SOAPservice.HeaderMessageVO>(headerMessageVOValue)
-        //        };
-        //        //var response = srv.SaveSOAPReportSecure(secureRequest);
-        //        // result = ClientModelMapper.ToClientResponse<ResultVO, WCF_SOAPservice.ResultVO>(response.SaveSOAPReportSecureResult);
-        //        result = srv.CallWebApi<ResultVO>(ToJsonRequest(secureRequest), "SaveSOAPReportSecure", Token, "SabtahvalPackageID");
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        #endregion
+
         #endregion
         #region NotUsed
         //public bool CancerInquiry(DO_IDENTIFIER PersonID)
         //{
-        //    string MethodName = "CancerInquiry";
+        //    string methodName = "CancerInquiry";
         //    var url = ConfigurationManager.AppSettings["CancerInquiry"];
         //    //var url = Urls.URL_MOHMEService();
         //    var Srv = adaptorFactory.GetWebService<RestApiChannel>(url);
@@ -1292,16 +1603,16 @@ namespace Ditas.SDK
         //        //r = Srv.CancerInquiry_T2(PersonID);
         //        r = Srv.CallWebApi<GeneralResponseMessageVO>(ToJsonRequest(PersonID), "", Token, "SabtahvalPackageID");
 
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
 
         //        var result = _ReturnGeneralResponseMessage<bool>(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1312,7 +1623,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of triple code, value, and terminology as DO_CODED_TEXT.</returns>
         //public DO_CODED_TEXT[] SearchTerminology(string Terminology, DO_DATE_TIME FromDate)
         //{
-        //    string MethodName = "SearchTerminology";
+        //    string methodName = "SearchTerminology";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1331,15 +1642,15 @@ namespace Ditas.SDK
         //        // ---------------------------Service Call
         //        r = Srv.SearchTerminology_T2(Terminology, FromDate);
         //         r = Srv.CallWebApi<GeneralResponseMessageVO>(ToQueryString(new Dictionary<string, string> { {nameof(Terminology), Terminology },{nameof(FromDate),FromDate } }), "SearchTerminology_T2", Token, "SabtahvalPackageID");
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        var result = _ReturnGeneralResponseMessage<DO_CODED_TEXT[]>(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1350,7 +1661,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the value of the code as a String.</returns>
         //public string GetTerminologyValue(string Terminology, string Code)
         //{
-        //    string MethodName = "GetTerminologyValue";
+        //    string methodName = "GetTerminologyValue";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1366,20 +1677,20 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetTerminologyValue_T2(Terminology, Code); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool ValidateCode(DO_CODED_TEXT CodedText)
         //{
-        //    string MethodName = "ValidateCode";
+        //    string methodName = "ValidateCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1395,15 +1706,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.ValidateCTS_T2(CodedText); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1413,7 +1724,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the list of treminolgies as an array of DO_IDENTIFIERs.</returns>
         //public string[] GetTerminologies(DO_DATE_TIME FromDate)
         //{
-        //    string MethodName = "GetTerminologies";
+        //    string methodName = "GetTerminologies";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1429,15 +1740,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetTerminologies_T2(FromDate); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1447,7 +1758,7 @@ namespace Ditas.SDK
         /////          <returns>The detailed degree information is returned in terms of EducationGeneralInfoVO.</returns>
         //public EducationGeneralInfoVO[] GetEducationDegreeInfo(DO_IDENTIFIER PersonID)
         //{
-        //    string MethodName = "GetEducationDegreeInfo";
+        //    string methodName = "GetEducationDegreeInfo";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1463,15 +1774,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetEducationDegreeInfo_T2(PersonID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1482,7 +1793,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the detailed information as a EducationGeneralInfoVO.</returns>
         //public EducationGeneralInfoVO[] GetGraduateInfo(DO_IDENTIFIER PersonID, DO_CODED_TEXT EducationLevel)
         //{
-        //    string MethodName = "GetGraduateInfo";
+        //    string methodName = "GetGraduateInfo";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1498,20 +1809,20 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetGraduateInfo_T2(PersonID, EducationLevel); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool CheckIsGraduate(DO_IDENTIFIER PersonID, DO_IDENTIFIER UniversityID, DO_CODED_TEXT EducationLevel, DO_CODED_TEXT EducationField)
         //{
-        //    string MethodName = "CheckIsGraduate";
+        //    string methodName = "CheckIsGraduate";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1527,15 +1838,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.CheckIsGraduate_T2(PersonID, UniversityID, EducationLevel, EducationField); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1545,7 +1856,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the education information of the person in trems of EducationGeneralInfoVO.</returns>
         //public EducationGeneralInfoVO[] GetEnrollmentConfirmationInfo(DO_IDENTIFIER PersonID)
         //{
-        //    string MethodName = "GetEnrollmentConfirmationInfo";
+        //    string methodName = "GetEnrollmentConfirmationInfo";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1561,15 +1872,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetEnrollmentConfirmationInfo_T2(PersonID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -1580,7 +1891,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns the healthcare provider information. The data type is HealthcareProviderVO.</returns>
         //public HealthcareProviderVO GetHealthCareProviderInfo(DO_IDENTIFIER ProviderID)
         //{
-        //    string MethodName = "GetHealthCareProviderInfo";
+        //    string methodName = "GetHealthCareProviderInfo";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1614,15 +1925,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHealthCareProviderInfo_T2(ProviderID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -1632,7 +1943,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns the information as DrugInfoVO format.</returns>
         //public DrugInfoVO GetDrugInfoByIRC(string DrugIRC)
         //{
-        //    string MethodName = "GetDrugInfoByIRC";
+        //    string methodName = "GetDrugInfoByIRC";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1648,15 +1959,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetDrugInfoByIRC_T2(DrugIRC); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -1666,7 +1977,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns the medical equipment details as EquipmentInfoVO class.</returns>
         //public EquipmentInfoVO GetEquipmentInfoByIRC(string EquipmentIRC)
         //{
-        //    string MethodName = "GetEquipmentInfoByIRC";
+        //    string methodName = "GetEquipmentInfoByIRC";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1682,20 +1993,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetEquipmentInfoByIRC_T2(EquipmentIRC); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool CheckSIMCardOwner(DO_IDENTIFIER PersonID, string MobileNumber)
         //{
-        //    string MethodName = "CheckSIMCardOwner";
+        //    string methodName = "CheckSIMCardOwner";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1711,20 +2022,20 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.CheckSIMCardOwner_T2(PersonID, MobileNumber); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool CheckSIMCardOwner(string NationalCode, string MobileNumber)
         //{
-        //    string MethodName = "CheckSIMCardOwner";
+        //    string methodName = "CheckSIMCardOwner";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1741,15 +2052,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        DO_IDENTIFIER PersonID = new DO_IDENTIFIER() { ID = NationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" };
         //        r = Srv.CheckSIMCardOwner_T2(PersonID, MobileNumber); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1759,7 +2070,7 @@ namespace Ditas.SDK
         /////          <returns> This method returns the address details of the location as PostalAddressVO class. </returns>
         //public PostalAddressVO GetAddressByPostalCode(string PostalCode)
         //{
-        //    string MethodName = "GetAddressByPostalCode";
+        //    string methodName = "GetAddressByPostalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1775,15 +2086,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetAddressByPostalCode_T2(PostalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1794,7 +2105,7 @@ namespace Ditas.SDK
         /////          <returns>Image data as an array of Byte.</returns>
         //public byte[] GetImageByNationalCode(string NationalCode, string Serial)
         //{
-        //    string MethodName = "GetImageByNationalCode";
+        //    string methodName = "GetImageByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1810,20 +2121,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetImageByNationalCode_T2(NationalCode, Serial); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public GeographicalCoordinatesVO GetLocationByPostalCode(string PostalCode)
         //{
-        //    string MethodName = "GetLocationByPostalCode";
+        //    string methodName = "GetLocationByPostalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1839,15 +2150,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetLocationByPostalCode_T2(PostalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1857,7 +2168,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the location of the person as a MobileLocationVO.</returns>
         //public MobileLocationVO GetMobileLocationInfo(string MobileNumber)
         //{
-        //    string MethodName = "GetMobileLocationInfo";
+        //    string methodName = "GetMobileLocationInfo";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1873,15 +2184,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetMobileLocationInfo_T2(MobileNumber); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1891,7 +2202,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the address details as a PhoneAddressVO.</returns>
         //public PhoneAddressVO GetPhoneAddress(string PhoneNumber)
         //{
-        //    string MethodName = "GetPhoneAddress";
+        //    string methodName = "GetPhoneAddress";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1907,15 +2218,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetPhoneAddress_T2(PhoneNumber); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -1926,7 +2237,7 @@ namespace Ditas.SDK
         /////          <returns>The detailed information of the veteran as a VeteranGeneralInfoVO.</returns>
         //public VeteranGeneralInfoVO GetVeteranGeneralInfoByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetVeteranGeneralInfoByNationalCode";
+        //    string methodName = "GetVeteranGeneralInfoByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1942,15 +2253,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetVeteranGeneralInfoByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -1960,7 +2271,7 @@ namespace Ditas.SDK
         /////          <returns>The information of the veteran as a VeteranInfoVO.</returns>
         //public VeteranInfoVO GetVeteranInfoByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetVeteranInfoByNationalCode";
+        //    string methodName = "GetVeteranInfoByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -1976,15 +2287,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetVeteranInfoByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -1997,7 +2308,7 @@ namespace Ditas.SDK
 
         //public PersonVO GetPersonByBirth(string NationalCode, int BirthYear)
         //{
-        //    string MethodName = "GetPersonByBirth";
+        //    string methodName = "GetPersonByBirth";
         //    string nationality = "993399";
         //    try
         //    {
@@ -2015,15 +2326,15 @@ namespace Ditas.SDK
         //        PersonVO voo = new PersonVO();
         //        voo.Nationality = new DO_CODED_TEXT() { Value = nationality, Coded_string = GetCoded(), Terminology_id = getTerminlogy() };
         //        voo.OtherIdentifier[0] = new DO_CODED_TEXT() { Value = nationality, Coded_string = GetCoded(fax), Terminology_id = getTerminlogy() };
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage<PersonVO>(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -2036,7 +2347,7 @@ namespace Ditas.SDK
         /////          <returns>It returns an array of patient's Insurance data, i.e. basic and complementary.</returns>
         //public InsuranceInquiryVO[] CallupInsurance(DO_IDENTIFIER PersonID, DO_IDENTIFIER ProviderID)
         //{
-        //    string MethodName = "CallupInsurance";
+        //    string methodName = "CallupInsurance";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2070,15 +2381,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.CallupInsurance_T2(Healthcarefacility, PersonID, ProviderID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -2090,7 +2401,7 @@ namespace Ditas.SDK
         /////          <returns>It returns an array of patient's Insurance data, i.e. basic and complementary.</returns>
         //public InsuranceInquiryVO[] CallupInsurance(string NationalCode, DO_IDENTIFIER ProviderID)
         //{
-        //    string MethodName = "CallupInsurance";
+        //    string methodName = "CallupInsurance";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2121,15 +2432,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.CallupInsurance_T2(Healthcarefacility, PersonID, ProviderID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -2142,7 +2453,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER GetHIDurgent(string NationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
         //{
-        //    string MethodName = "GetHIDurgent";
+        //    string methodName = "GetHIDurgent";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2175,15 +2486,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHIDurgent_T2(Healthcarefacility, PersonID, HealthCareProvider, Insurer, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -2196,7 +2507,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER GetHIDurgent(DO_IDENTIFIER PersonID, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
         //{
-        //    string MethodName = "GetHIDurgent";
+        //    string methodName = "GetHIDurgent";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2232,15 +2543,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHIDurgent_T2(Healthcarefacility, PersonID, HealthCareProvider, Insurer, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -2254,7 +2565,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER GetHID(string NationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, string InquiryID, DO_IDENTIFIER ReferralID)
         //{
-        //    string MethodName = "GetHID";
+        //    string methodName = "GetHID";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2289,15 +2600,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHID_T2(Healthcarefacility, PersonID, HealthCareProvider, Insurer, InquiryID, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -2311,7 +2622,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a Health Tracking ID called HID and the data type is DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER GetHID(DO_IDENTIFIER PersonID, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, string InquiryID, DO_IDENTIFIER ReferralID)
         //{
-        //    string MethodName = "GetHID";
+        //    string methodName = "GetHID";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2349,15 +2660,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHID_T2(Healthcarefacility, PersonID, HealthCareProvider, Insurer, InquiryID, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -2368,7 +2679,7 @@ namespace Ditas.SDK
         /////          <returns>Identifier of the analysis result as a HealthInsuranceClaimIdentifierVO.</returns>
         //public HealthInsuranceClaimIdentifierVO SendHealthInsuranceClaim(PatientBillMessageVO PatientBill, DO_CODED_TEXT InquiryState)
         //{
-        //    string MethodName = "SendHealthInsuranceClaim";
+        //    string methodName = "SendHealthInsuranceClaim";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2398,20 +2709,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.SendHealthInsuranceClaimSecure_T2(Data, InquiryState); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public InsuranceCoverageVO GetHealthInsuranceClaimAnalysis(string ID)
         //{
-        //    string MethodName = "GetHealthInsuranceClaimAnalysis";
+        //    string methodName = "GetHealthInsuranceClaimAnalysis";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2438,386 +2749,19 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetHealthInsuranceClaimAnalysis_T2(ID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
-        ///// <summary>
-        /////          This method is used to generate a list of batch HIDs as reserved HIDs to be used when the Insurance Services are not available.
-        /////          </summary>
-        /////          <param name="Insurer">The first argument to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
-        /////          <param name="Count">The number of the required reserved HIDs is specified through this argument.</param>
-        /////          <returns>The output is a list of reserved HIDs. The datatype to this object is ReserveHIDlistVO</returns>
-        //public ReserveHIDlistVO GenerateBatchHID(DO_CODED_TEXT Insurer, int Count)
-        //{
-        //    string MethodName = "GenerateBatchHID";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (Healthcarefacility == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Insurer == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Count < 1)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.GenerateBatchHID_T2(Healthcarefacility, Insurer, Count); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
-        /////          </summary>
-        /////          <param name="HID">Specifies the HID that requires update. The data type is DO_IDENTIFIER.</param>
-        /////          <param name="nationalCode">This argument specifies the patient's national code. the data type is in string format.</param>
-        /////          <param name="HealthCareProvider">The argument to this method is the identifier of the healthcare provider. The healthcare provider identifier is RWI (Real World Identifier) and the data type is DO_IDENTIFIER.</param>
-        /////          <param name="Insurer">one of the arguments to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
-        /////          <returns>The method returns boolean which indicates if the process was successful.</returns>
-        //public bool UpdateHID(DO_IDENTIFIER HID, string nationalCode, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
-        //{
-        //    string MethodName = "UpdateHID";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (nationalCode == "")
-        //                throw new Exception("Argument is missing.");
-        //            MainFx.CheckNationalCode(nationalCode);
-        //            if (HealthCareProvider == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Healthcarefacility == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Insurer == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        DO_IDENTIFIER PersonID = new DO_IDENTIFIER() { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" };
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.UpdateHID_T2(Healthcarefacility, HID, PersonID, HealthCareProvider, Insurer, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
-        /////          </summary>
-        /////          <param name="HID">Specifies the HID that requires update. The data type is DO_IDENTIFIER.</param>
-        /////          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
-        /////          <param name="HealthCareProvider">The argument to this method is the identifier of the healthcare provider. The healthcare provider identifier is RWI (Real World Identifier) and the data type is DO_IDENTIFIER.</param>
-        /////          <param name="Insurer">one of the arguments to this method is to specify the insurer type in DO_CODED_TEXT format. The coding is available on http://coding.behdasht.gov.ir . The terminology is thritaEHR.insurer</param>
-        /////          <returns>The method returns boolean which indicates if the process was successful.</returns>
-        //public bool UpdateHID(DO_IDENTIFIER HID, DO_IDENTIFIER PersonID, DO_IDENTIFIER HealthCareProvider, DO_CODED_TEXT Insurer, DO_IDENTIFIER ReferralID)
-        //{
-        //    string MethodName = "UpdateHID";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (PersonID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (PersonID.Type != "")
-        //            {
-        //                if (PersonID.Type.ToUpper == "National_Code".ToUpper())
-        //                    MainFx.CheckNationalCode(PersonID.ID);
-        //            }
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (HealthCareProvider == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Healthcarefacility == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Insurer == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.UpdateHID_T2(Healthcarefacility, HID, PersonID, HealthCareProvider, Insurer, ReferralID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
-        /////          </summary>
-        /////          <param name="NationalCode">This arguement is to specify the nationalcode of the patient in string format.</param>
-        /////          <param name="HID">The HID is the Health Tracking ID that is assigned to any patient encounter to the healthcare system. This ID is generated based on the patient's and the healthcare provider's eligiblity to receive/provide healthcare services. Generating this ID corresponds to using the patient's insurance booklet.</param>
-        /////          <param name="Reason">In order to eliminate an assigned HID, a reason should be prvided to specify why the ID is being eliminated. The reason should be specified with DO_CODED_TEXT data type.</param>
-        /////          <param name="Description">The additional description on the elimination process and the additional comments can be specified through the Description argument.</param>
-        /////          <returns>The result of the method is boolean which specifies if the elimination process was successful or not.</returns>
-        //public bool EliminateHID(string NationalCode, DO_IDENTIFIER HID, DO_CODED_TEXT Reason, string Description)
-        //{
-        //    string MethodName = "EliminateHID";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (NationalCode == "")
-        //                throw new Exception("Argument is missing.");
-        //            MainFx.CheckNationalCode(NationalCode);
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Reason == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        DO_IDENTIFIER PersonID = new DO_IDENTIFIER() { ID = NationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" };
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.EliminateHID_T2(Healthcarefacility, PersonID, HID, Reason, Description); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
-        /////          </summary>
-        /////          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
-        /////          <param name="HID">The HID is the Health Tracking ID that is assigned to any patient encounter to the healthcare system. This ID is generated based on the patient's and the healthcare provider's eligiblity to receive/provide healthcare services. Generating this ID corresponds to using the patient's insurance booklet.</param>
-        /////          <param name="Reason">In order to eliminate an assigned HID, a reason should be prvided to specify why the ID is being eliminated. The reason should be specified with DO_CODED_TEXT data type.</param>
-        /////          <param name="Description">The additional description on the elimination process and the additional comments can be specified through the Description argument.</param>
-        /////          <returns>The result of the method is boolean which specifies if the elimination process was successful or not.</returns>
-        //public bool EliminateHID(DO_IDENTIFIER PersonID, DO_IDENTIFIER HID, DO_CODED_TEXT Reason, string Description)
-        //{
-        //    string MethodName = "EliminateHID";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (PersonID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (PersonID.Type != "")
-        //            {
-        //                if (PersonID.Type.ToUpper == "National_Code".ToUpper())
-        //                    MainFx.CheckNationalCode(PersonID.ID);
-        //            }
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (Reason == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.EliminateHID_T2(Healthcarefacility, PersonID, HID, Reason, Description); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
-        /////          </summary>
-        /////          <param name="HID">indicates the HID that is going to be verified. It is of type DO_IDENTIFIER.</param>
-        /////          <param name="NationalCode">This argument specifies the patient's national code. the data type is in string format.</param>
-        /////          <returns>This method returns the status of the HID as DO_CODED_TEXT. The terminology is available on http://coding.behdasht.gov.ir</returns>
-        //public DO_CODED_TEXT VerifyHIDStatus(DO_IDENTIFIER HID, string NationalCode)
-        //{
-        //    string MethodName = "VerifyHIDStatus";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (NationalCode == "")
-        //                throw new Exception("Argument is missing.");
-        //            MainFx.CheckNationalCode(NationalCode);
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        DO_IDENTIFIER PersonID = new DO_IDENTIFIER() { ID = NationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" };
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.VerifyHIDStatus_T2(Healthcarefacility, HID, PersonID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
-        ///// <summary>
-        /////          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
-        /////          </summary>
-        /////          <param name="HID">indicates the HID that is going to be verified. It is of type DO_IDENTIFIER.</param>
-        /////          <param name="PersonID">This argument is designed to specify the Patient's unique identifier. This identifier should be a Real World Identifier (RWI). National code is among the most common identifiers. RWIs are technically defined with DO_IDENTIFIER data type.</param>
-        /////          <returns>This method returns the status of the HID as DO_CODED_TEXT. The terminology is available on http://coding.behdasht.gov.ir</returns>
-        //public DO_CODED_TEXT VerifyHIDStatus(DO_IDENTIFIER HID, DO_IDENTIFIER PersonID)
-        //{
-        //    string MethodName = "VerifyHIDStatus";
-        //    try
-        //    {
-        //        // ------------------------part1------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer TimeTotal = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        DO_IDENTIFIER Healthcarefacility = GetHealthCareFacility();
-        //        ClientWebService.InsuranceGate.InsuranceGateT2 Srv = new ClientWebService.InsuranceGate.InsuranceGateT2(); // Service Define
-        //        Srv.Url = Urls.URL_InsuranceGateService; // -------------------'Service URL
-        //        string KP = "";
-        //        var headerMessageVOValue = new HeaderMessageVO();
-        //        KP = _ExtractKeyPair(headerMessageVOValue);
-        //        GeneralResponseMessageVO r;
-        //        // ------------------------part1------------------------------------------
-        //        try
-        //        {
-        //            if (PersonID == null)
-        //                throw new Exception("Argument is missing.");
-        //            if (PersonID.Type != "")
-        //            {
-        //                if (PersonID.Type.ToUpper == "National_Code".ToUpper())
-        //                    MainFx.CheckNationalCode(PersonID.ID);
-        //            }
-        //            if (HID == null)
-        //                throw new Exception("Argument is missing.");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception("Error at Ditas.SDK Validation. ", ex);
-        //        }
-        //        // ------------------------part2------------------------------------------
-        //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.VerifyHIDStatus_T2(Healthcarefacility, HID, PersonID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
-        //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
-        //        return result;
-        //    }
-        //    // ------------------------part2------------------------------------------
-        //    catch (Exception ex)
-        //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
-        //    }
-        //}
+
+
         ///// <summary>        
         /////          This method is designed to get the frequency of the HID usages.        
         /////          </summary>        
@@ -2825,7 +2769,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the frequency as Integer.</returns>
         //public int HIDUsedCount(DO_IDENTIFIER HID)
         //{
-        //    string MethodName = "HIDUsedCount";
+        //    string methodName = "HIDUsedCount";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2850,15 +2794,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.HIDUsedCount_T2(Healthcarefacility, HID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -2868,7 +2812,7 @@ namespace Ditas.SDK
         /////          <returns>The method retruns the array of referral path as a HIDPathVO.</returns>
         //public HIDPathVO[] GetReferralPath(DO_IDENTIFIER HID)
         //{
-        //    string MethodName = "GetReferralPath";
+        //    string methodName = "GetReferralPath";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -2893,15 +2837,15 @@ namespace Ditas.SDK
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        GeneralResponseMessageVO r;
         //        r = Srv.GetReferralPath_T2(Healthcarefacility, HID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -2970,13 +2914,13 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
         //public DO_IDENTIFIER[] GetActivePrescriptionIDByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetActivePrescriptionIDByNationalCode";
+        //    string methodName = "GetActivePrescriptionIDByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3001,20 +2945,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActivePrescriptionIDByPersonIdentifier(DO_IDENTIFIER PersonIdentifier)
         //{
-        //    string MethodName = "GetActivePrescriptionIDByPersonIdentifier";
+        //    string methodName = "GetActivePrescriptionIDByPersonIdentifier";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3039,15 +2983,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByPersonIdentifier_T2(PersonIdentifier); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -3127,7 +3071,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -3195,7 +3139,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -3206,7 +3150,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a list of HIDs that have not any feedback yet.</returns>
         //public DO_IDENTIFIER[] GetActiveReferralIDByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetActiveReferralIDByNationalCode";
+        //    string methodName = "GetActiveReferralIDByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3231,20 +3175,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveReferralIDByPersonIdentifier(DO_IDENTIFIER PersonIdentifier)
         //{
-        //    string MethodName = "GetActiveReferralIDByPersonIdentifier";
+        //    string methodName = "GetActiveReferralIDByPersonIdentifier";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3269,15 +3213,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByPersonIdentifier_T2(PersonIdentifier); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -3347,7 +3291,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -3423,12 +3367,12 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveLaboratoryPrescriptionIDByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetActiveLaboratoryPrescriptionIDByNationalCode";
+        //    string methodName = "GetActiveLaboratoryPrescriptionIDByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3453,20 +3397,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveLaboratoryPrescriptionIDByPersonIdentifier(DO_IDENTIFIER PersonIdentifier)
         //{
-        //    string MethodName = "GetActiveLaboratoryPrescriptionIDByPersonIdentifier";
+        //    string methodName = "GetActiveLaboratoryPrescriptionIDByPersonIdentifier";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3491,15 +3435,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByPersonIdentifier_T2(PersonIdentifier); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -3569,12 +3513,12 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveMedicalImagingPrescriptionIDByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetActiveMedicalImagingPrescriptionIDByNationalCode";
+        //    string methodName = "GetActiveMedicalImagingPrescriptionIDByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3599,20 +3543,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveMedicalImagingPrescriptionIDByPersonIdentifier(DO_IDENTIFIER PersonIdentifier)
         //{
-        //    string MethodName = "GetActiveMedicalImagingPrescriptionIDByPersonIdentifier";
+        //    string methodName = "GetActiveMedicalImagingPrescriptionIDByPersonIdentifier";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3637,15 +3581,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByPersonIdentifier_T2(PersonIdentifier); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -3656,7 +3600,7 @@ namespace Ditas.SDK
         /////          <returns>It returns the result as ValidationResultVO. consisting of the result of the validation and the relevant messages.</returns>
         //public ValidationResultVO SepasValidator(object Obj, DO_CODED_TEXT ValidationType)
         //{
-        //    string MethodName = "SepasValidator";
+        //    string methodName = "SepasValidator";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3688,17 +3632,17 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.SepasErrorTranscriberSecure_T2(b, DM, ValidationType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        Time.EventStart();
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("...Build GeneralResponseMessage Time");
-        //        _Log("CallHIX Total Time");
+        //        _Log(" Build GeneralResponseMessage Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }// ---------Function Name
         //}
 
@@ -3772,7 +3716,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -3815,7 +3759,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -3884,7 +3828,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -3959,7 +3903,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -3969,7 +3913,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of HIDs as DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER[] GetActiveInsurerReimbursementHIDByNationalCode(string NationalCode)
         //{
-        //    string MethodName = "GetActiveInsurerReimbursementHIDByNationalCode";
+        //    string methodName = "GetActiveInsurerReimbursementHIDByNationalCode";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -3994,20 +3938,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByNationalCode_T2(NationalCode); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public DO_IDENTIFIER[] GetActiveInsurerReimbursementHIDByPersonIdentifier(DO_IDENTIFIER PersonIdentifier)
         //{
-        //    string MethodName = "GetActiveInsurerReimbursementHIDByPersonIdentifier";
+        //    string methodName = "GetActiveInsurerReimbursementHIDByPersonIdentifier";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4032,15 +3976,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetActiveCEIDByPersonIdentifier_T2(PersonIdentifier); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 
@@ -4062,7 +4006,7 @@ namespace Ditas.SDK
         /////          <returns>A successful add retuns a unique identifier called tracking qeueue ID</returns>
         //public string AddProviderScheduling(HealthcareProviderVO Provider, HealthOrganizationUnitVO HealthcareFacilityUnit, DO_DATE_TIME StartDateTime, int DurationPerPatient, int QueueNumber, DO_CODED_TEXT Service, DO_CODED_TEXT Quota, string LocalID, DO_DATE_TIME BookingStartDate, DO_DATE_TIME BookingExpiryDate)
         //{
-        //    string MethodName = "AddProviderScheduling";
+        //    string methodName = "AddProviderScheduling";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4091,15 +4035,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.AddProviderScheduling_T2(Provider, HealthcareFacilityUnit, StartDateTime, DurationPerPatient, QueueNumber, Service, Quota, LocalID, BookingStartDate, BookingExpiryDate); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4113,7 +4057,7 @@ namespace Ditas.SDK
         /////          <returns>A list of appointments is returned. The data type is an array of PersonAppointmentVO.</returns>
         //public PersonAppointmentVO[] GetAppointments(HealthOrganizationUnitVO HealthcareFacilityUnit, HealthcareProviderVO Provider, DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime, DO_CODED_TEXT Service)
         //{
-        //    string MethodName = "GetAppointments";
+        //    string methodName = "GetAppointments";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4142,15 +4086,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetAppointments_T2(HealthcareFacilityUnit, Provider, StartDateTime, EndDateTime, Service); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4161,7 +4105,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns a person appointment.</returns>
         //public PersonAppointmentVO GetAppointmentByTQID(string TQID)
         //{
-        //    string MethodName = "GetAppointmentByTQID";
+        //    string methodName = "GetAppointmentByTQID";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4186,15 +4130,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetAppointmentByTQID_T2(TQID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4205,7 +4149,7 @@ namespace Ditas.SDK
         /////          <returns>The result of this method is in boolean format.</returns>
         //public bool RemoveProviderScheduling(string TrackingQueueID, DO_CODED_TEXT Reason)
         //{
-        //    string MethodName = "RemoveProviderScheduling";
+        //    string methodName = "RemoveProviderScheduling";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4232,15 +4176,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.RemoveProviderScheduling_T2(TrackingQueueID, Reason); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4251,7 +4195,7 @@ namespace Ditas.SDK
         /////          <returns>The output of the method is an array of Tracking Qeueue IDs that are canceled by the patient.</returns>
         //public string[] GetRemovedAppointmentList(DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime)
         //{
-        //    string MethodName = "GetRemovedAppointmentList";
+        //    string methodName = "GetRemovedAppointmentList";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4267,15 +4211,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetRemovedAppointmentList_T2(Healthcarefacility, StartDateTime, EndDateTime); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4286,7 +4230,7 @@ namespace Ditas.SDK
         /////          <returns>this method retuns boolean which indicates whether the update process was successful or not.</returns>
         //public bool SetAppointmentStatus(string TrackingQueueID, DO_CODED_TEXT Status)
         //{
-        //    string MethodName = "SetAppointmentStatus";
+        //    string methodName = "SetAppointmentStatus";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4313,15 +4257,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.SetAppointmentStatus_T2(TrackingQueueID, Status); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4332,7 +4276,7 @@ namespace Ditas.SDK
         /////          <returns>The output of this method is DO_CODED_TEXT</returns>
         //public DO_CODED_TEXT GetAppointmentStatus(string TrackingQID)
         //{
-        //    string MethodName = "GetAppointmentStatus";
+        //    string methodName = "GetAppointmentStatus";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4357,15 +4301,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetAppointmentStatus_T2(TrackingQID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4379,7 +4323,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of scheduleBlockVO based on the inputs of the method.</returns>
         //public ScheduleBlockVO[] GetProviderScheduling(HealthcareProviderVO Provider, HealthOrganizationUnitVO HealthcareFacilityUnit, DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime, DO_CODED_TEXT Service)
         //{
-        //    string MethodName = "GetProviderScheduling";
+        //    string methodName = "GetProviderScheduling";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4408,15 +4352,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetProviderScheduling_T2(Provider, HealthcareFacilityUnit, StartDateTime, EndDateTime, Service); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4430,7 +4374,7 @@ namespace Ditas.SDK
         /////          <returns>this method returns a boolean value which indicates if the operation was successful or not.</returns>
         //public bool SetAppointment(PersonInfoVO Person, string TrackingQueueID, DO_IDENTIFIER HID, DO_CODED_TEXT AppointmentType, DO_QUANTITY Deposit)
         //{
-        //    string MethodName = "SetAppointment";
+        //    string methodName = "SetAppointment";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4459,15 +4403,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.SetAppointment_T2(Person, TrackingQueueID, HID, AppointmentType, Deposit); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4479,7 +4423,7 @@ namespace Ditas.SDK
         /////          <returns>The result of the method is boolean which indicates success or failure of the cancelation process.</returns>
         //public bool RemoveAppointment(string TrackingQueueID, DO_IDENTIFIER PersonID, DO_CODED_TEXT Reason)
         //{
-        //    string MethodName = "RemoveAppointment";
+        //    string methodName = "RemoveAppointment";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4506,15 +4450,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.RemoveAppointment_T2(TrackingQueueID, PersonID, Reason); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4526,7 +4470,7 @@ namespace Ditas.SDK
         //public string[] GetRemovedProviderSchedulingList(DO_IDENTIFIER HealthCareFacilityID, DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime)
         //{
         //    // Critical_ToDO :check Healthcarefacility
-        //    string MethodName = "GetRemovedProviderSchedulingList";
+        //    string methodName = "GetRemovedProviderSchedulingList";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4553,15 +4497,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetRemovedProviderSchedulingList_T2(HealthCareFacilityID, StartDateTime, EndDateTime); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4578,7 +4522,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of schedule block to be used in the inquirer system.</returns>
         //public ScheduleBlockVO[] GetNearProviderScheduling(DO_CODED_TEXT Specialty, DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime, DO_CODED_TEXT Service, double Latitude, double Longitude, DO_QUANTITY Distance)
         //{
-        //    string MethodName = "GetNearProviderScheduling";
+        //    string methodName = "GetNearProviderScheduling";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4607,15 +4551,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetNearProviderScheduling_T2(Specialty, StartDateTime, EndDateTime, Service, Latitude, Longitude, Distance); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4629,7 +4573,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of scheduleBlockVO based on the inputs of the method.</returns>
         //public ScheduleBlockVO[] GetProviderSchedulingByLocation(HealthcareProviderVO Provider, DO_DATE_TIME StartDateTime, DO_DATE_TIME EndDateTime, DO_CODED_TEXT Service, HighLevelAreaVO Location)
         //{
-        //    string MethodName = "GetProviderSchedulingByLocation";
+        //    string methodName = "GetProviderSchedulingByLocation";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4662,15 +4606,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetProviderSchedulingByLocation_T2(Provider, StartDateTime, EndDateTime, Service, Location); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4716,7 +4660,7 @@ namespace Ditas.SDK
         //    }
         //    catch (Exception ex)
         //    {
-        //         _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //         _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4726,7 +4670,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns a unique identifier as healthcare facility ID in DO_IDENTIFIER format.</returns>
         //public DO_IDENTIFIER AddOrganization(OrganizationDetailVO OrganizationDetail)
         //{
-        //    string MethodName = "AddOrganization";
+        //    string methodName = "AddOrganization";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4742,15 +4686,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.AddOrganization_T2(OrganizationDetail); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -4760,7 +4704,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the transaction was successful or not.</returns>
         //public bool UpdateOrganization(OrganizationDetailVO OrganizationDetail)
         //{
-        //    string MethodName = "UpdateOrganization";
+        //    string methodName = "UpdateOrganization";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4776,15 +4720,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.UpdateOrganization_T2(OrganizationDetail); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4796,7 +4740,7 @@ namespace Ditas.SDK
         /////          <returns>This method returuns a list of organization IDs in DO_IDENTIFIER format.</returns>
         //public DO_IDENTIFIER[] GetChildOrganizations(DO_IDENTIFIER ParentOrganizationID, DO_CODED_TEXT OrganizationType, DO_DATE_TIME FromDate)
         //{
-        //    string MethodName = "GetChildOrganizations";
+        //    string methodName = "GetChildOrganizations";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4812,15 +4756,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetChildOrganizations_T2(ParentOrganizationID, OrganizationType, FromDate); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -4830,7 +4774,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the detailed information of the organization as a OrganizationDetailVO.</returns>
         //public OrganizationDetailVO GetOrganization(DO_IDENTIFIER OrganizationID)
         //{
-        //    string MethodName = "GetOrganization";
+        //    string methodName = "GetOrganization";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4846,15 +4790,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetOrganization_T2(OrganizationID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -4864,7 +4808,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the parent organization uniqueidentifier as a DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER GetParentOrganization(DO_IDENTIFIER OrganizationID)
         //{
-        //    string MethodName = "GetParentOrganization";
+        //    string methodName = "GetParentOrganization";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4880,15 +4824,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetParentOrganization_T2(OrganizationID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4898,7 +4842,7 @@ namespace Ditas.SDK
         /////          <returns>Identifier of the System as a DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER AddNewSystem(SystemVO System)
         //{
-        //    string MethodName = "AddNewSystem";
+        //    string methodName = "AddNewSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4916,15 +4860,15 @@ namespace Ditas.SDK
         //        // Critical_ToDO AddNewSystem
         //        // r = Srv.AddNewSystem_T2(System) '---------------------------Service Call
         //        throw new Exception("Error 0");
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4936,7 +4880,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean value indicating whether the operation was successful or not.</returns>
         //public bool AddOrganizationSystem(DO_IDENTIFIER OrganizationID, DO_IDENTIFIER SystemID, string SystemVersion)
         //{
-        //    string MethodName = "AddOrganizationSystem";
+        //    string methodName = "AddOrganizationSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4952,15 +4896,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.AddOrganizationSystem_T2(OrganizationID, SystemID, SystemVersion); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -4970,7 +4914,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns True or False indicating whether the operation was successful or not.</returns>
         //public bool ApproveSystem(DO_IDENTIFIER SystemID)
         //{
-        //    string MethodName = "ApproveSystem";
+        //    string methodName = "ApproveSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -4986,15 +4930,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.ApproveSystem_T2(SystemID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -5005,7 +4949,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns True or False indicating whether the opration was successful or not.</returns>
         //public bool DeleteOrganizationSystem(DO_IDENTIFIER OrganizationID, DO_IDENTIFIER SystemID)
         //{
-        //    string MethodName = "DeleteOrganizationSystem";
+        //    string methodName = "DeleteOrganizationSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5021,15 +4965,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.DeleteOrganizationSystem_T2(OrganizationID, SystemID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>
@@ -5039,7 +4983,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns True or False indicating whether the operation was successful or not.</returns>
         //public bool DisapproveSystem(DO_IDENTIFIER SystemID)
         //{
-        //    string MethodName = "DisapproveSystem";
+        //    string methodName = "DisapproveSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5055,15 +4999,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.DisapproveSystem_T2(SystemID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5074,7 +5018,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the transaction was successful or not.</returns>
         //public bool UpdateSystem(DO_IDENTIFIER SystemID, SystemVO System)
         //{
-        //    string MethodName = "UpdateSystem";
+        //    string methodName = "UpdateSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5090,15 +5034,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.UpdateSystem_T2(SystemID, System); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5108,7 +5052,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of Organization IDs as DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER[] GetOrganizationIDs(DO_IDENTIFIER SystemID)
         //{
-        //    string MethodName = "GetOrganizationIDs";
+        //    string methodName = "GetOrganizationIDs";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5124,15 +5068,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetOrganizationIDs_T2(SystemID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5142,7 +5086,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of system information as SystemVO.</returns>
         //public SystemVO[] GetSystem(DO_IDENTIFIER SystemID)
         //{
-        //    string MethodName = "GetSystem";
+        //    string methodName = "GetSystem";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5158,15 +5102,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetSystem_T2(SystemID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5176,7 +5120,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of systemIDs as DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER[] GetSystemIDs(DO_CODED_TEXT POCSType)
         //{
-        //    string MethodName = "GetSystemIDs";
+        //    string methodName = "GetSystemIDs";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5192,15 +5136,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetSystemIDs_T2(POCSType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5210,7 +5154,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of systems IDs as DO_IDENTIFIER.</returns>
         //public DO_IDENTIFIER[] GetSystemIDsByOrganization(DO_IDENTIFIER OrganizationID)
         //{
-        //    string MethodName = "GetSystemIDsByOrganization";
+        //    string methodName = "GetSystemIDsByOrganization";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5226,20 +5170,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetSystemIDsByOrganization_T2(OrganizationID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
-        //public string CallHIX(string msg)
+        //public string End Call(string msg)
         //{
-        //    string MethodName = "CallHIX";
+        //    string methodName = "End Call";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5254,16 +5198,16 @@ namespace Ditas.SDK
         //        // ------------------------part1------------------------------------------
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
-        //        r = Srv.CallHIX(msg); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        r = Srv.End Call(msg); // ---------------------------Service Call
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }// ---------Function Name
         //}
         ///// <summary>
@@ -5285,7 +5229,7 @@ namespace Ditas.SDK
         /////          <returns>This method returns the UserID of the DITASRA system. The data type is String.</returns>
         //public string AddNewUser(string UserName, string UserPassword, string UserTitle, string FirstName, string LastName, string NationalCode, string Email, string Mobile, string Tel, DO_IDENTIFIER OrgID, string[] RoleID, string PostID)
         //{
-        //    string MethodName = "AddNewUser";
+        //    string methodName = "AddNewUser";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5301,20 +5245,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.AddNewUser_T2(UserName, UserPassword, UserTitle, FirstName, LastName, NationalCode, Email, Mobile, Tel, OrgID, RoleID, PostID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool EditUser(string UserID, string UserName, string UserPassword, string UserTitle, string FirstName, string LastName, string NationalCode, string Email, string Mobile, string Tel, string[] RoleID, string PostID)
         //{
-        //    string MethodName = "EditUser";
+        //    string methodName = "EditUser";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5330,15 +5274,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.EditUser_T2(UserID, UserName, UserPassword, UserTitle, FirstName, LastName, NationalCode, Email, Mobile, Tel, RoleID, PostID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5348,7 +5292,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of Ditas.SDKs as DO_CODED_TEXT.</returns>
         //public DO_CODED_TEXT[] GetDitas.SDKList(DO_CODED_TEXT POCSType)
         //{
-        //    string MethodName = "GetDitas.SDKList";
+        //    string methodName = "GetDitas.SDKList";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5364,15 +5308,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetDitas.SDKList_T2(POCSType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5382,7 +5326,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of available services as MethodVO.</returns>
         //public MethodVO[] GetServiceList(DO_CODED_TEXT Ditas.SDKType)
         //{
-        //    string MethodName = "GetServiceList";
+        //    string methodName = "GetServiceList";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5398,15 +5342,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetServiceList_T2(Ditas.SDKType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5420,7 +5364,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the tranaction was successful or not.</returns>
         //public bool RegisterToken(DO_IDENTIFIER SystemID, DO_IDENTIFIER LocationID, string UserID, string PackageName, DO_CODED_TEXT Ditas.SDKType)
         //{
-        //    string MethodName = "RegisterToken";
+        //    string methodName = "RegisterToken";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5436,15 +5380,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.RegisterToken_T2(SystemID, LocationID, PackageName, UserID, Ditas.SDKType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5454,7 +5398,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the transaction was successful of not.</returns>
         //public bool RevokeToken(string UserID)
         //{
-        //    string MethodName = "RevokeToken";
+        //    string methodName = "RevokeToken";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5470,20 +5414,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.RevokeToken_T2(UserID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool ApproveUser(string UserID)
         //{
-        //    string MethodName = "ApproveUser";
+        //    string methodName = "ApproveUser";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5499,20 +5443,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.ApproveUser_T2(UserID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public bool DisapproveUser(string UserID)
         //{
-        //    string MethodName = "DisapproveUser";
+        //    string methodName = "DisapproveUser";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5528,15 +5472,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.DisapproveUser_T2(UserID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5546,7 +5490,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns an array of packages each as a MethodCallPackageVO.</returns>
         //public MethodCallPackageVO[] GetPackages(DO_CODED_TEXT Ditas.SDKType)
         //{
-        //    string MethodName = "GetPackages";
+        //    string methodName = "GetPackages";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5562,15 +5506,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetPackages_T2(Ditas.SDKType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5584,7 +5528,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns boolean indicating either the transaction was successful or not.</returns>
         //public bool UpdatePackage(DO_IDENTIFIER SystemID, DO_IDENTIFIER LocationID, string PackageName, string UserID, DO_CODED_TEXT Ditas.SDKType)
         //{
-        //    string MethodName = "UpdatePackage";
+        //    string methodName = "UpdatePackage";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5600,15 +5544,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.UpdatePackage_T2(SystemID, LocationID, PackageName, UserID, Ditas.SDKType); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         ///// <summary>        
@@ -5618,7 +5562,7 @@ namespace Ditas.SDK
         /////          <returns>The method returns the call count and detailed information as an array of UserCallCountVOs.</returns>
         //public UserCallCountVO[] GetUserCallCount(string UserID)
         //{
-        //    string MethodName = "GetUserCallCount";
+        //    string methodName = "GetUserCallCount";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5634,20 +5578,20 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.GetUserCallCount_T2(UserID); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
         //public EquipmentMessageResultVO SubmitEquipment(EquipmentInventoryMessageVO EquipmentInventoryMessage)
         //{
-        //    string MethodName = "SubmitEquipment";
+        //    string methodName = "SubmitEquipment";
         //    try
         //    {
         //        // ------------------------part1------------------------------------------
@@ -5666,15 +5610,15 @@ namespace Ditas.SDK
         //        // ------------------------part2------------------------------------------
         //        Ditas.SDK.AdditionalTools.Basic.Chronometer Time = new Ditas.SDK.AdditionalTools.Basic.Chronometer();
         //        r = Srv.SubmitEquipmentSecure_T2(b); // ---------------------------Service Call
-        //        _Log("...Call Service Time [" + MethodName + "]");
+        //        _Log($"Start {methodName} Service");
         //        object result = _ReturnGeneralResponseMessage(r, KP);
-        //        _Log("CallHIX Total Time");
+        //        _Log($"End {methodName} Service");
         //        return result;
         //    }
         //    // ------------------------part2------------------------------------------
         //    catch (Exception ex)
         //    {
-        //        _LogIfAvailiable($"Some errors have occurred at {MethodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}");
+        //        _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
         //    }
         //}
 

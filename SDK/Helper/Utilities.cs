@@ -1,4 +1,5 @@
-﻿using Ditas.SDK.Mappers;
+﻿using Ditas.SDK.DataModel;
+using Ditas.SDK.Mappers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -85,7 +86,7 @@ namespace Ditas.SDK.Helper
 
         public static bool ValidateIranianNationalCode(string nationalCode)
         {
-            if (string.IsNullOrEmpty(nationalCode) || nationalCode.Length != 10)
+            if (string.IsNullOrEmpty(nationalCode) || nationalCode.Length != 10 || nationalCode == "0000000000")
             {
                 return false;
             }
@@ -108,5 +109,31 @@ namespace Ditas.SDK.Helper
             }
         }
 
+    }
+
+
+    public static class Extentions
+    {
+        public static DataModel.ResultVO JoinToSepasResult(this DataModel.ResultVO resultVO, DataModel.ResultVO result)
+        {
+            var returnModel= new DataModel.ResultVO
+            {
+                CompositionUID = $"{result?.CompositionUID}{Constants.ConstatKeyValues.Splitter}{resultVO?.CompositionUID}",
+                ErrorMessage = $"{result?.ErrorMessage}{Constants.ConstatKeyValues.Splitter}{resultVO?.ErrorMessage}",
+                MessageUID = $"{result?.MessageUID}{Constants.ConstatKeyValues.Splitter}{resultVO?.MessageUID}",
+                patientUID = $"{result?.patientUID}{Constants.ConstatKeyValues.Splitter}{resultVO?.patientUID}",
+            };
+
+            if (returnModel.CompositionUID == Constants.ConstatKeyValues.Splitter)
+                returnModel.CompositionUID = "";
+            if (returnModel.patientUID == Constants.ConstatKeyValues.Splitter)
+                returnModel.patientUID = "";
+            if (returnModel.ErrorMessage == Constants.ConstatKeyValues.Splitter)
+                returnModel.ErrorMessage = "";
+            if (returnModel.MessageUID == Constants.ConstatKeyValues.Splitter)
+                returnModel.MessageUID = "";
+
+            return returnModel;
+        }
     }
 }

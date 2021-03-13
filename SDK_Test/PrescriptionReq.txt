@@ -23,8 +23,8 @@
 	</VM:Person>
 	<VM:MsgID>
 		<VM:IS_Queriable xsi:nil="true" />
-		<VM:SystemID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="2F8DE629-458E-402A-9173-D540C7166EFC" Type="System_ID" />
-		<VM:HealthCareFacilityID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="9b1a6231-33cb-400c-a68d-55501437136b" Type="Org_ID" />
+		<VM:SystemID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="4e794d6f-45a2-1186-817c-5e34e3fcf8ac" Type="System_ID" />
+		<VM:HealthCareFacilityID Issuer="MOHME_IT" Assigner="MOHME_IT" ID="859773e8-5d81-46c6-9df1-5fb551b00495" Type="Org_ID" />
 	</VM:MsgID>
 	<VM:Composition>
 		<VM:Admission>

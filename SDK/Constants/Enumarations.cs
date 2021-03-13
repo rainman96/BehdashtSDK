@@ -8,11 +8,7 @@ namespace Ditas.SDK.Constants
 {
     public class Enumarations
     {
-        public enum Method
-        {
-            GET = 0,
-            POST = 1
-        }
+
         public enum ChannelType
         {
             Rest,
@@ -28,9 +24,19 @@ namespace Ditas.SDK.Constants
         public enum PrescType
         {
             Drug = 1,
-            Paracilinic=2,
+            Paracilinic = 2,
             Visit = 3,
-            DrService=5
+            DrService = 5
+        }
+        public enum LogLevel
+        {
+            Off,
+            Info,
+            Warn,
+            Debug,
+            Error,
+            Fatal,
+            All,
         }
     }
 }

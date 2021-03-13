@@ -60,7 +60,7 @@ namespace Ditas.SDK_Test
             Assert.IsNotNull(result);
         }
         [TestMethod]
-        public void CallupInsurance_Bad_NIN_Req()
+        public void CallupInsurance_Bad_ID_Req()
         {
             service = new Service();
             try
@@ -70,7 +70,7 @@ namespace Ditas.SDK_Test
                 {
                     Issuer = "National_Org_Civil_Reg",
                     Assigner = "National_Org_Civil_Reg",
-                    ID = "0079506453",
+                    ID = "2092359551",
                     Type = "National_Code"
                 },
                 new DO_IDENTIFIER
@@ -83,15 +83,15 @@ namespace Ditas.SDK_Test
                 );
 
             }
-            catch (NullReferenceException ex)
+            catch (Exception ex)
             {
-                StringAssert.Equals(ex.Message, "اطلاعات یافت نشد");
+                StringAssert.Equals(ex.Message, "The value of");
                 return;
             }
-            Assert.Fail("the expected exception was not thrown");
+           
         }
         [TestMethod]
-        public void CallupInsurance_Bad_PID_Req()
+        public void CallupInsurance_Short_NIN_Req()
         {
             service = new Service();
             try
@@ -114,9 +114,9 @@ namespace Ditas.SDK_Test
                 );
 
             }
-            catch (NullReferenceException ex)
+            catch (Exception ex)
             {
-                StringAssert.Equals(ex.Message, "اطلاعات یافت نشد");
+                StringAssert.Equals(ex.Message, "The value of");
                 return;
             }
             Assert.Fail("the expected exception was not thrown");
@@ -139,7 +139,7 @@ namespace Ditas.SDK_Test
                 {
                     Issuer = "MOHME_IT",
                     Assigner = "MOHME_IT",
-                    ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42",
+                    ID = "",
                     Type = "Org_ID"
                 }
                 );
@@ -147,42 +147,12 @@ namespace Ditas.SDK_Test
             }
             catch (Exception ex)
             {
-                StringAssert.Contains(ex.Message, "The value of");
+                StringAssert.Contains(ex.Message, " ");
                 return;
             }
             Assert.Fail("the expected exception was not thrown");
         }
-        [TestMethod]
-        public void CallupInsurance_Type_Empty()
-        {
-            service = new Service();
-            try
-            {
-                var result = service.CallupInsurance(
-                new DO_IDENTIFIER
-                {
-                    Issuer = "National_Org_Civil_Reg",
-                    Assigner = "National_Org_Civil_Reg",
-                    ID = "0079506453",
-                    Type = "National_Code"
-                },
-                new DO_IDENTIFIER
-                {
-                    Issuer = "MOHME_IT",
-                    Assigner = "MOHME_IT",
-                    ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42",
-                    Type = "Org_ID"
-                }
-                );
 
-            }
-            catch (Exception ex)
-            {
-                StringAssert.Contains(ex.Message, "The value of");
-                return;
-            }
-            Assert.Fail("the expected exception was not thrown");
-        }
         [TestMethod]
         public void CallupInsurance_Null()
         {

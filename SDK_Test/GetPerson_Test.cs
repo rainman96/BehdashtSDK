@@ -76,7 +76,7 @@ namespace Ditas.SDK_Test
             {
                 var result = service.GetPersonByBirth("", 13650630);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 StringAssert.Contains(ex.Message, "The value of");
                 return;
@@ -92,7 +92,7 @@ namespace Ditas.SDK_Test
                 var result = service.GetPersonByBirth(null, 13650630);
 
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 StringAssert.Contains(ex.Message, "The value of");
                 return;
@@ -107,7 +107,7 @@ namespace Ditas.SDK_Test
             {
                 var result = service.GetPersonByBirth("4569962343", 0);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 StringAssert.StartsWith(ex.Message, "Invalid");
                 return;
@@ -122,7 +122,7 @@ namespace Ditas.SDK_Test
             {
                 var result = service.GetPersonByBirth("4569962343", -10);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 StringAssert.StartsWith(ex.Message, "Invalid");
                 return;
@@ -137,7 +137,7 @@ namespace Ditas.SDK_Test
             {
                 var result = service.GetPersonByBirth("", -10);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 if (ex.Message.StartsWith("The value of"))
                 {

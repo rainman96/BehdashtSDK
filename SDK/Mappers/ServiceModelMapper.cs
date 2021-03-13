@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using System.Globalization;
-
+using Ditas.SDK.Helper;
 namespace Ditas.SDK.Mappers
 {
     internal class ServiceModelMapper
@@ -18,11 +18,11 @@ namespace Ditas.SDK.Mappers
         internal static DrugTaminRequest ToPrescriptionTamin(MedicationPrescriptionsMessageVO medicationPrescriptionsMessage)
         {
             if (medicationPrescriptionsMessage == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
 
             var nationalCode = medicationPrescriptionsMessage?.Person?.NationalCode;
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
 
             var reps = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats;
             int repeat = reps.HasValue ? reps.Value : 0;
@@ -47,20 +47,20 @@ namespace Ditas.SDK.Mappers
         {
             var date = DateTime.Now.AddDays(60);
             var persianDate = new PersianCalendar();
-            return $"{persianDate.GetYear(date)}{persianDate.GetMonth(date)}{persianDate.GetDayOfMonth(date)}";
+            return $"{persianDate.GetYear(date)}{persianDate.GetMonth(date).ToString("00")}{persianDate.GetDayOfMonth(date).ToString("00")}";
         }
 
         private static string GetPrescDate(DO_DATE issueDate)
         {
             if (issueDate == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(issueDate)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(issueDate)).Message);
             return $"{issueDate.Year}{issueDate.Month}{issueDate.Day}";
         }
 
         internal static DrugSalamatRequest ToDrugSalamat(MedicationPrescriptionsMessageVO medicationPrescriptionsMessage)
         {
             if (medicationPrescriptionsMessage == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(medicationPrescriptionsMessage)).Message);
 
 
             return new DrugSalamatRequest
@@ -99,13 +99,13 @@ namespace Ditas.SDK.Mappers
         internal static HIDRequest GetHIDRequest(DO_IDENTIFIER personID, DO_IDENTIFIER healthCareProvider, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
         {
             if (personID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
             if (healthCareProvider == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(healthCareProvider)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareProvider)).Message);
             if (insurer == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
             if (orgID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
 
             return new HIDRequest
             {
@@ -121,13 +121,13 @@ namespace Ditas.SDK.Mappers
         internal static HIDRequest GetHIDRequest(string nationalCode, DO_IDENTIFIER healthCareFacilityID, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
             if (healthCareFacilityID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
             if (insurer == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
             if (orgID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
 
             return new HIDRequest
             {
@@ -143,13 +143,13 @@ namespace Ditas.SDK.Mappers
         internal static InsuranceInquiryRequest ToInsuranceRequest(DO_IDENTIFIER personID, DO_IDENTIFIER providerID, DO_IDENTIFIER healthcarefacility)
         {
             if (personID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
             if (!Utilities.ValidateIranianNationalCode(personID.ID))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(personID.ID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(personID.ID)).Message);
             if (providerID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
             if (string.IsNullOrEmpty(providerID.ID))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
 
             return new InsuranceInquiryRequest
             {
@@ -165,9 +165,9 @@ namespace Ditas.SDK.Mappers
         internal static RequestPersonInformation GetPersonRequest(string nationalCode, int birthYear)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
             if (birthYear < 1 || birthYear.ToString().Length != 8)
-                throw new ArgumentException(Constants.Messages.InvalidFieldValue(nameof(birthYear)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(birthYear)).Message);
 
             return new RequestPersonInformation
             {
@@ -182,15 +182,188 @@ namespace Ditas.SDK.Mappers
         internal static MemberInfoByMcRequest GetMemberInfoRequest(DO_IDENTIFIER providerID)
         {
             if (providerID == null)
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
             if (string.IsNullOrEmpty(providerID.ID))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
             if (string.IsNullOrEmpty(providerID.Type))
-                throw new ArgumentException(Constants.Messages.ValueIsNullMessage(nameof(providerID.Type)).Message);
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID.Type)).Message);
             return new MemberInfoByMcRequest
             {
                 McCodeNumeric = providerID.ID,
                 McCodeTypeEn = providerID.Type
+            };
+        }
+
+        internal static SaveSepasSecureRequest SaveSepasSecureRequest(object message) 
+        {
+            if (message == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(message)).Message);
+            //if (string.IsNullOrEmpty(providerID.ID))
+            //    throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID.ID)).Message);
+            //if (string.IsNullOrEmpty(providerID.Type))
+            //    throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID.Type)).Message);
+
+            string key, iv, data;
+            (key, iv, data) = message.AesEncryptData();
+            return new SaveSepasSecureRequest
+            {
+                ContentType = "Thrita.DM.Message.PatientBillMessageVO",
+                IPClient = Utilities.GetClientIp(),
+                IPServer = Utilities.GetClientIp(),
+                LocationID = AppConfiguration.LocationID,
+                SystemID = AppConfiguration.SystemId,
+                Data = data,
+                IV = iv,
+                Key = key,
+            };
+        }
+
+        internal static BatchHIDRequest GetBatchHIDRequest(DO_CODED_TEXT insurer, DO_IDENTIFIER orgID, int count)
+        {
+            if (insurer == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+
+            return new BatchHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                Count = count,
+                InsurerID = insurer,
+                OrgID = orgID,
+            };
+        }
+
+
+        internal static UpdateHIDRequest GetUpdateHIDRequest(DO_IDENTIFIER HID, string nationalCode, DO_IDENTIFIER healthCareFacilityID, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
+        {
+            if (!Utilities.ValidateIranianNationalCode(nationalCode))
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+            if (healthCareFacilityID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
+            if (insurer == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+
+            return new UpdateHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                HcpID = healthCareFacilityID,
+                InsurerID = insurer,
+                OrgID = orgID,
+                HID=HID,
+                PersonID = new DO_IDENTIFIER { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
+            };
+        }
+        internal static UpdateHIDRequest GetUpdateHIDRequest(DO_IDENTIFIER HID, DO_IDENTIFIER PersonId, DO_IDENTIFIER healthCareFacilityID, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
+        {
+            if (!Utilities.ValidateIranianNationalCode(PersonId.ID))
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(PersonId)).Message);
+            if (healthCareFacilityID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
+            if (insurer == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(insurer)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+
+            return new UpdateHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                HcpID = healthCareFacilityID,
+                InsurerID = insurer,
+                OrgID = orgID,
+                HID = HID,
+                PersonID = PersonId
+            };
+        }
+        internal static EliminateHIDRequest GetEliminateHIDRequest(string nationalCode, DO_IDENTIFIER HID, DO_CODED_TEXT reason, DO_IDENTIFIER orgID)
+        {
+       
+            if (!Utilities.ValidateIranianNationalCode(nationalCode))
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
+            if (reason == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            return new EliminateHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                OrgID = orgID,
+                Reason = reason,
+                HID = HID,
+                PersonID = new DO_IDENTIFIER { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
+            };
+        }
+        internal static EliminateHIDRequest GetEliminateHIDRequest(DO_IDENTIFIER PersonId, DO_IDENTIFIER HID, DO_CODED_TEXT reason, DO_IDENTIFIER orgID)
+        {
+            if (PersonId == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(PersonId)).Message);
+            if (!Utilities.ValidateIranianNationalCode(PersonId.ID))
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(PersonId)).Message);
+            if (reason == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            return new EliminateHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                OrgID = orgID,
+                Reason=reason,
+                HID = HID,
+                PersonID = PersonId
+            };
+        }
+
+        internal static VerifyHIDRequest GetVerifyHIDRequest(string nationalCode, DO_IDENTIFIER HID, DO_IDENTIFIER orgID)
+        {
+            if (!Utilities.ValidateIranianNationalCode(nationalCode))
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+
+            return new VerifyHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                OrgID = orgID,
+                HID = HID,
+                PersonID = new DO_IDENTIFIER { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
+            };
+        }
+        internal static VerifyHIDRequest GetVerifyHIDRequest(DO_IDENTIFIER PersonId, DO_IDENTIFIER HID, DO_IDENTIFIER orgID)
+        {
+            if (PersonId == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(PersonId)).Message);
+            if (!Utilities.ValidateIranianNationalCode(PersonId?.ID))
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(PersonId.ID)).Message);
+            if (orgID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
+            if (HID == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(HID)).Message);
+
+            return new VerifyHIDRequest
+            {
+                ClientIp = Utilities.GetClientIp(),
+                AppUser = "ditas",
+                OrgID = orgID,
+                HID = HID,
+                PersonID = PersonId
             };
         }
     }

@@ -8,6 +8,8 @@ namespace Ditas.SDK
     {
         private static bool ConfigurationIsValid = false;
         internal static string LocationID => ConfigurationManager.AppSettings[Constants.ConstatKeyValues.LOCATION_ID];
+        internal static string SystemId => ConfigurationManager.AppSettings[Constants.ConstatKeyValues.SYSTEM_ID];
+        
         internal static string WebServiceBaseAddress => ConfigurationManager.AppSettings[Constants.ConstatKeyValues.WEBSERVICE_BASE_URL];
         internal static string PID(string key)
         {

@@ -26,42 +26,21 @@ namespace Ditas.SDK_Test
         [TestMethod]
         public void SaveMedicationPrescription_Json()
         {
-            service = new Service();
-            var result = service.SaveMedicationPrescription(Utilities.JsonTextToModel<MedicationPrescriptionsMessageVO>(File.ReadAllText("JsonPrescriptionReq.txt")));
-            Assert.IsNotNull(result);
-        }
-        [TestMethod]
-        public void GetHID_BadNationalCode()
-        {
-            service = new Service();
             try
             {
-                var result = service.GetHID("4160262661",
-    new DO_IDENTIFIER { Assigner = "", ID = "11116", Issuer = "", Type = "" },
-    new DO_CODED_TEXT { Coded_string = "1" },
-    new DO_IDENTIFIER { Assigner = "", ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42", Issuer = "", Type = "" });
-                result = service.GetHID("62661",
-                    new DO_IDENTIFIER { Assigner = "", ID = "11116", Issuer = "", Type = "" },
-                    new DO_CODED_TEXT { Coded_string = "1" },
-                    new DO_IDENTIFIER { Assigner = "", ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42", Issuer = "", Type = "" });
-                result = service.GetHID("62661555555555555",
-                    new DO_IDENTIFIER { Assigner = "", ID = "11116", Issuer = "", Type = "" },
-                    new DO_CODED_TEXT { Coded_string = "1" },
-                    new DO_IDENTIFIER { Assigner = "", ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42", Issuer = "", Type = "" });
-                result = service.GetHID("62661555555555555",
-                    new DO_IDENTIFIER { Assigner = "", ID = "11116", Issuer = "", Type = "" },
-                    new DO_CODED_TEXT { Coded_string = "1" },
-                    new DO_IDENTIFIER { Assigner = "", ID = "3E87DC76-A67A-4A77-B0F6-39D6AEBF2A42", Issuer = "", Type = "" });
+                service = new Service();
+                var result = service.SaveMedicationPrescription(Utilities.JsonTextToModel<MedicationPrescriptionsMessageVO>(File.ReadAllText("JsonPrescriptionReq.txt")));
+                Assert.IsNotNull(result);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                StringAssert.Contains(ex.Message, "The value of");
+                StringAssert.Contains(ex.Message, "Parameter name:");
 
                 return;
             }
             Assert.Fail("the expected exception was not thrown");
-
         }
+
 
     }
 }

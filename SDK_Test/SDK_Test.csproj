@@ -57,6 +57,7 @@
   <ItemGroup>
     <Compile Include="CallUpInsurance_Test.cs" />
     <Compile Include="GetPrescriptionTamin_Test.cs" />
+    <Compile Include="SavePatientBill_Test.cs" />
     <Compile Include="HID_Test.cs" />
     <Compile Include="GetHealthCareProviderInfo_Test.cs" />
     <Compile Include="GetPerson_Test.cs" />
@@ -82,9 +83,59 @@
     <Content Include="JsonPrescriptionReq.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="publickey.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="req.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="savemedicationperscription.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_14_2020 11_08_14 AM_558AC43F-FE8F-A34C-5445-4C38EC6568F8_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_14_2020 12_07_43 PM_4E794D6F-45A2-1186-817C-5E34E3FCF8AC_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_15_2020 2_06_34 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_18_2020 10_43_09 AM_C663D188-BB74-4FA3-737B-6795DC86C8AD_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_18_2020 11_42_33 AM_ED3E73B2-7C94-4EFC-BCAA-0C953B1C7094_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_28_2020 10_59_36 AM_82CC9A45-CAFC-4EC5-A72B-8416F24FAA97_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\1_28_2020 9_29_46 AM_ED3E73B2-7C94-4EFC-BCAA-0C953B1C7094_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\2_1_2020 1_12_04 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\2_1_2020 6_14_01 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\LaboratoryResult\2_2_2020 1_46_05 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SaveLaboratoryResultSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_12_2020 3_15_50 PM_D51566F7-BA93-1618-3B83-17328805798D_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_14_2020 10_04_37 AM_6ED91F7A-559D-B5ED-FE16-9508C07077C5_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_14_2020 12_07_47 PM_4E794D6F-45A2-1186-817C-5E34E3FCF8AC_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_15_2020 2_07_22 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_18_2020 10_57_42 AM_C663D188-BB74-4FA3-737B-6795DC86C8AD_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\1_28_2020 4_49_37 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\2_1_2020 11_28_29 AM_02CA9674-0175-4936-B842-E34022E8DFCD_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\2_1_2020 1_48_14 PM_6D3F9BB7-7349-5C14-0FDF-A822391DCC55_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\2_1_2020 6_15_16 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\Pathology\2_3_2020 2_03_11 PM_6D3F9BB7-7349-5C14-0FDF-A822391DCC55_SavePathologyReportSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\1.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XmlSamplePackets\PatientBill\2_1_2020 5_02_56 PM_583FD8E1-ACEE-4FF8-89EC-11D4F0DEC4FA_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_1_2020 9_34_05 AM_EA2A1D3E-D3EA-4003-9ADD-409D18A45053_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_2_2020 2_46_15 PM_558AC43F-FE8F-A34C-5445-4C38EC6568F8_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_2_2020 3_11_37 PM_583FD8E1-ACEE-4FF8-89EC-11D4F0DEC4FA_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_3_2020 2_21_46 PM_48D15C4F-0E36-1222-5E03-524B5B2BAFB3_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_4_2020 10_50_43 AM_050A2A5D-82F4-1DEC-DB02-961569CA82B1_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_4_2020 10_53_30 AM_050A2A5D-82F4-1DEC-DB02-961569CA82B1_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_4_2020 11_18_25 AM_4E794D6F-45A2-1186-817C-5E34E3FCF8AC_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\PatientBill\2_4_2020 11_25_41 AM_050A2A5D-82F4-1DEC-DB02-961569CA82B1_SavePatientBillSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\1.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XmlSamplePackets\SIYABReport\1_14_2020 11_40_34 AM_4E794D6F-45A2-1186-817C-5E34E3FCF8AC_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\1_14_2020 12_07_51 PM_4E794D6F-45A2-1186-817C-5E34E3FCF8AC_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\1_17_2020 10_29_24 AM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\1_17_2020 10_32_13 AM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\2_1_2020 2_06_51 PM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\2_1_2020 2_16_52 PM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\2_1_2020 2_20_00 PM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\2_1_2020 9_03_56 AM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
+    <Content Include="XmlSamplePackets\SIYABReport\2_1_2020 9_15_13 AM_76E35B89-6EA1-08A2-51F1-B64930C57FDF_SaveSIYABReportSecure.xml" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -537,7 +537,7 @@ namespace Ditas.SDK.DataModel
     public partial class MethodVO
     {
         /// <remarks/>
-        public string MethodName { get; set; }
+        public string methodName { get; set; }
         /// <remarks/>
         public string ServiceName { get; set; }
     }

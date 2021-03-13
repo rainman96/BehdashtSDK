@@ -32,9 +32,9 @@ namespace Ditas.SDK_Test
                 var result = service.GetHealthCareProviderInfo(new DO_IDENTIFIER { ID = "100", Type = "TR" });
 
             }
-            catch (NullReferenceException ex)
+            catch (Exception ex)
             {
-                StringAssert.Equals(ex.Message, "اطلاعات یافت نشد");
+                StringAssert.Equals(ex.Message, "اطلاعاتی یافت نشد");
                 return;
             }
             Assert.Fail("the expected exception was not thrown");

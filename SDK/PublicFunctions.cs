@@ -4,13 +4,14 @@ using Ditas.SDK.DataModel;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using static Ditas.SDK.Constants.Enumarations;
 
 namespace Ditas.SDK
 {
     public sealed partial class Service
     {
         //private URL Urls;
-        private ILog Log = LogManager.GetLogger(nameof(Service));
+        private static ILog Log = LogManager.GetLogger(nameof(Service));
         //private string ToJsonRequest<T>(T secureRequest)
         //{
         //    return Newtonsoft.Json.JsonConvert.SerializeObject(secureRequest);
@@ -44,14 +45,37 @@ namespace Ditas.SDK
             return sb.ToString();
         }
 
-        private void _LogIfAvailiable(string msg)
+        private void _LogIfAvailiable(string msg,LogLevel logLevel=LogLevel.Info)
         {
             if (AppConfiguration.ActiveLog)
             {
-                var text = string.Empty;
-                Log.Info($"{ DateTime.Now.ToString("yyyy / MM / dd HH: mm:ss.fff")} | {msg }");
+                switch (logLevel)
+                {
+                    case LogLevel.Info:
+                        Log.Info(msg);
+                        break;
+                    case LogLevel.Warn:
+                        Log.Warn(msg);
+                        break;
+                    case LogLevel.Debug:
+                        Log.Debug(msg);
+                        break;
+                    case LogLevel.Error:
+                        Log.Error(msg);
+                        break;
+                    case LogLevel.Fatal:
+                        Log.Fatal(msg);
+                        break;
+                    case LogLevel.All:
+                        Log.Info(msg);
+                        break;
+                    case LogLevel.Off:
+                    default:
+                        break;
+                }
             }
         }
+ 
         private (bool State, string Message, string Filed) IsValid(params (string Filed, string Value)[] reqData)
         {
             for (int i = 0; i < reqData.Length; i++)
@@ -71,7 +95,7 @@ namespace Ditas.SDK
                 healthcarefacility.Assigner = "MOHME_IT";
                 healthcarefacility.Type = "Org_ID";
 
-                _LogIfAvailiable("...Get HealthCareFacility");
+                _LogIfAvailiable("Get HealthCareFacility...");
                 return healthcarefacility;
             }
             catch (Exception ex)
