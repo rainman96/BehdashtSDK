@@ -20,12 +20,12 @@ namespace Ditas.SDK.Services
 
         public IRestResponse CallWebApi(ApiHeader header, ApiRequest apiRequest)
         {
-             _LogIfAvailiable("calling webapi service",LogLevel.Debug);
+            _LogIfAvailiable("calling webapi service", LogLevel.Debug);
             var (isValid, message, _) = ValidateInputs(header, apiRequest);
             if (isValid == false)
                 throw new SdkException(message);
 
-             _LogIfAvailiable("Inputs are valid", LogLevel.Debug);
+            _LogIfAvailiable("Inputs are valid", LogLevel.Debug);
 
             if ((_tokenManager?.GetTokenState() ?? TokenManager.TokenState.Empty) == TokenManager.TokenState.Empty)
                 throw new SdkException("Token is empty");
@@ -35,13 +35,17 @@ namespace Ditas.SDK.Services
 
             var client = new RestClient($"{(_base.EndsWith("/") ? _base : _base + "/")}{(header.ApiUrl.StartsWith("/") ? header.ApiUrl.Remove(0, 1) : header.ApiUrl)}");
             var request = new RestRequest(header.ApiMethodType);
+
             request.AddHeader("cache-control", "no-cache");
             request.AddHeader("content-type", header.ContentType);
-            request.AddHeader("Connection", "keep-alive");
+            //request.AddHeader("Connection", "keep-alive");
             request.AddHeader("Authorization", "bearer " + _tokenManager.GetAccessToken());
             request.AddHeader("pid", header.PackageID);
-            request.AddJsonBody(apiRequest.JsonBody);
+
+            _LogIfAvailiable($"Request is :{apiRequest.JsonBody}", LogLevel.Debug);
+            request.AddParameter("application/json", apiRequest.JsonBody, ParameterType.RequestBody);
             IRestResponse response = client.Execute(request);
+            _LogIfAvailiable($"Response is :StatusCode:{response.StatusCode}, Content:{response.Content}, ErrorException:{response.ErrorException}, ErrorException:{response.ErrorMessage}", LogLevel.Debug);
             return response;
         }
         public static IServiceConfiguration GetChannelFromConfig() => new RestApiChannel();
@@ -54,7 +58,7 @@ namespace Ditas.SDK.Services
             {
                 case TokenManager.TokenState.Expired:
                 case TokenManager.TokenState.Empty:
-                    _LogIfAvailiable("Get token by new",LogLevel.Debug);
+                    _LogIfAvailiable("Get token by new", LogLevel.Debug);
                     Interlocked.Exchange(ref _tokenManager, GetNewTokenByUsername());
                     break;
                 case TokenManager.TokenState.NearExpire:
@@ -62,7 +66,7 @@ namespace Ditas.SDK.Services
                     Interlocked.Exchange(ref _tokenManager, GetNewTokenByRefresh());
                     break;
                 case TokenManager.TokenState.Ok:
-                    _LogIfAvailiable("Token is valid",LogLevel.Debug);
+                    _LogIfAvailiable("Token is valid", LogLevel.Debug);
                     break;
                 default:
                     throw new SdkException("The token is not in the predicted state");
@@ -73,7 +77,7 @@ namespace Ditas.SDK.Services
 
         public ICheckToken CheckConfiguration()
         {
-            _LogIfAvailiable("Checking Configuration",LogLevel.Debug);
+            _LogIfAvailiable("Checking Configuration", LogLevel.Debug);
 
             var state = AppConfiguration.IsValid();
             if (state.State)

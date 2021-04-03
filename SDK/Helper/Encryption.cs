@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,11 +37,21 @@ namespace Ditas.SDK.Helper
 
         private static string GetRSAPublicKey()
         {
-            return System.IO.File.ReadAllText(Constants.ConstatKeyValues.PUBLIC_KEY_FILE_PATH);
+            var path = AppConfiguration.AbsolutePublicKeyFileName;
+            if (path.StartsWith("~/"))
+            {
+                var webroot = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                path = Path.Combine(webroot, path.Replace("~/", ""));
+            }
+            if (!File.Exists(path))
+                throw new SdkException($"The file was not found in the following path :{path}");
+            return System.IO.File.ReadAllText(path);
         }
 
         internal static (string PrivateKey, string IV, string EncryptedData) AesEncryptData(this object input)
         {
+            if (input == null)
+                throw new SdkException("Input argument is null or empty!");
             AesCryptography Aes = new AesCryptography();
             string pkey, iv;
             (pkey, iv) = GetAESKey();

@@ -19,9 +19,17 @@ namespace Ditas.SDK_Test
         [TestMethod]
         public void SaveMedicationPrescription_OK()
         {
-            service = new Service();
-            var result = service.SaveMedicationPrescription(Utilities.GetModelFromXmlFile<MedicationPrescriptionsMessageVO>("PrescriptionReq.txt"));
-            Assert.IsNotNull(result);
+            try
+            {
+                service = new Service();
+                var result = service.SaveMedicationPrescription(Utilities.GetModelFromXmlFile<MedicationPrescriptionsMessageVO>("PrescriptionReq.txt"));
+                Assert.IsNotNull(result);
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
         }
         [TestMethod]
         public void SaveMedicationPrescription_Json()

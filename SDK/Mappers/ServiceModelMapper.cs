@@ -26,7 +26,7 @@ namespace Ditas.SDK.Mappers
 
             var reps = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats;
             int repeat = reps.HasValue ? reps.Value : 0;
-            var prescription = GetNotedetailePrescription(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders, repeat);
+            var prescription = GetNotedetailePrescription(medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Orders, repeat, "01");
             return new DrugTaminRequest
             {
                 Comments = "Send Ditas",
@@ -70,7 +70,7 @@ namespace Ditas.SDK.Mappers
             };
         }
 
-        private static Notedetaileprsc[] GetNotedetailePrescription(MedicationPrescriptionRowVO[] orders, int repeat)
+        private static Notedetaileprsc[] GetNotedetailePrescription(MedicationPrescriptionRowVO[] orders, int repeat, string srvType)
         {
             if (orders == null)
                 return null;
@@ -88,11 +88,33 @@ namespace Ditas.SDK.Mappers
                     SrvCode = s?.ProductCode?.Coded_string,
                     SrvType = new Srvtype
                     {
-                        SrvType = "01"
+                        SrvType = srvType
                     }
                 },
                 SrvQty = (int)(s?.TotalNumber?.Magnitude.HasValue ?? false ? s?.TotalNumber?.Magnitude.Value : 0),
                 TimesAday = new Timesaday { DrugAmntId = Utilities.ToIntSafe(s?.Frequency?.Coded_string, "Frequency.Coded_string") }
+            }
+                ).ToArray();
+        }
+        private static Notedetaileprsc[] GetServicePrescriptionsOrder(ServicePrescriptionRowVO[] orders, int repeat, string srvType)
+        {
+            if (orders == null)
+                return null;
+
+
+            return orders.Select(s => new Notedetaileprsc
+            {
+                Repeat = repeat,
+                SrvId = new Srvid
+                {
+                    SrvCode = s?.Service?.Coded_string,
+                    SrvType = new Srvtype
+                    {
+                        SrvType = srvType
+                    }
+                },
+                SrvQty = (int)(s?.ServiceAmount.HasValue ?? false ? s?.ServiceAmount.Value : 0),
+                ParTarifGrp = new ParTarifGrp { ParGrpCode = "000" }
             }
                 ).ToArray();
         }
@@ -139,6 +161,43 @@ namespace Ditas.SDK.Mappers
                 PersonID = new DO_IDENTIFIER { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
             };
         }
+
+        internal static DrugTaminRequest ToLaboratoryTamin(LaboratoryPrescriptionsMessageVO laboratoryPrescriptionsMessageVO)
+        {
+            if (laboratoryPrescriptionsMessageVO == null)
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(laboratoryPrescriptionsMessageVO)).Message);
+
+            var nationalCode = laboratoryPrescriptionsMessageVO?.Person?.NationalCode;
+            if (!Utilities.ValidateIranianNationalCode(nationalCode))
+                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+
+            var reps = laboratoryPrescriptionsMessageVO?.Composition?.ServicePrescriptions?.Repeats;
+            int repeat = reps.HasValue ? reps.Value : 0;
+            var prescription = GetServicePrescriptionsOrder(laboratoryPrescriptionsMessageVO?.Composition?.ServicePrescriptions?.Orders, repeat, "02");
+            var date = laboratoryPrescriptionsMessageVO?.Composition?.ServicePrescriptions?.IssueDateTime;
+            DO_DATE dO_DATE = new DO_DATE
+            {
+                Day = date.Day,
+                Month = date.Month,
+                Year = date.Year
+            };
+            return new DrugTaminRequest
+            {
+                Comments = "Send Ditas",
+                SiamID = AppConfiguration.LocationID,
+                DocId = laboratoryPrescriptionsMessageVO?.Composition?.Admission?.AdmittingDoctor?.Identifier?.ID,
+                DocMobileNo = laboratoryPrescriptionsMessageVO?.MsgID?.Committer?.ContactPoint?.First()?.Detail,
+                DocNationalCode = null,
+                ExpireDate = GetExpireDate(),
+                Mobile = laboratoryPrescriptionsMessageVO?.Person?.MobileNumber,
+                NoteDetailEprscs = prescription,
+                Patient = nationalCode,
+                PrescDate = GetPrescDate(dO_DATE),
+                PrescType = new Presctype { PrescTypeId = (int)(prescription != null ? Constants.Enumarations.PrescType.Drug : Constants.Enumarations.PrescType.Visit) }
+            };
+        }
+
+
 
         internal static InsuranceInquiryRequest ToInsuranceRequest(DO_IDENTIFIER personID, DO_IDENTIFIER providerID, DO_IDENTIFIER healthcarefacility)
         {
@@ -194,7 +253,7 @@ namespace Ditas.SDK.Mappers
             };
         }
 
-        internal static SaveSepasSecureRequest SaveSepasSecureRequest(object message) 
+        internal static SaveSepasSecureRequest SaveSepasSecureRequest(object message)
         {
             if (message == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(message)).Message);
@@ -256,7 +315,7 @@ namespace Ditas.SDK.Mappers
                 HcpID = healthCareFacilityID,
                 InsurerID = insurer,
                 OrgID = orgID,
-                HID=HID,
+                HID = HID,
                 PersonID = new DO_IDENTIFIER { ID = nationalCode, Assigner = "National_Org_Civil_Reg", Issuer = "National_Org_Civil_Reg", Type = "National_Code" }
             };
         }
@@ -286,7 +345,7 @@ namespace Ditas.SDK.Mappers
         }
         internal static EliminateHIDRequest GetEliminateHIDRequest(string nationalCode, DO_IDENTIFIER HID, DO_CODED_TEXT reason, DO_IDENTIFIER orgID)
         {
-       
+
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
                 throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
             if (reason == null)
@@ -322,7 +381,7 @@ namespace Ditas.SDK.Mappers
                 ClientIp = Utilities.GetClientIp(),
                 AppUser = "ditas",
                 OrgID = orgID,
-                Reason=reason,
+                Reason = reason,
                 HID = HID,
                 PersonID = PersonId
             };

@@ -43,7 +43,7 @@ namespace Ditas.SDK.Constants
 
         internal const string SECRET_ID = "SecretId";
         internal const string CLIENT_ID = "ClientId";
-        internal const string USE_LOG = "UseLog";
+        internal const string USE_LOG = "EnableSdkLog";
         internal const string LOCATION_ID = "LocationId";
 
         internal const string API_USERNAME = "ApiUsername";
@@ -85,9 +85,10 @@ namespace Ditas.SDK.Constants
         internal const  string SAVE_SIYAB_REPORT_SECURE_URL = "SaveSIYABReportSecureURL";
         internal const  string SAVE_SOAP_REPOR_TSECURE_URL = "SaveSOAPReportSecureURL";
         internal const string SAVE_SYNDROMIC_CASE_SECURE_URL = "SaveSyndromicCaseSecureURL";
+        internal const string ABSOLUTE_PUBLIC_KEY_FILE_PATH = "AbsolutePublicKeyFilePath";
 
-
-        internal const string PUBLIC_KEY_FILE_PATH = "PublicKey.xml";
+        
+        //internal const string PUBLIC_KEY_FILE_PATH = "PublicKey.xml";
 
         public const string Splitter = "</>";
     }

@@ -60,8 +60,14 @@ namespace Ditas.SDK.DataModel
         public int Repeat { get; set; }
         [JsonProperty("drugInstruction")]
         public Druginstruction DrugInstruction { get; set; }
+        [JsonProperty("parTarifGrp")]
+        public ParTarifGrp ParTarifGrp { get; set; }
     }
-
+    public class ParTarifGrp
+    {
+        [JsonProperty("parGrpCode")]
+        public string ParGrpCode { get; set; }
+    }
     public class Srvid
     {
         [JsonProperty("srvType")]

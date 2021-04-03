@@ -61,7 +61,7 @@ namespace Ditas.SDK
                     case InsuranceType.NirohayeMosallah:
                     case InsuranceType.Azad:
                     default:
-                        throw new SdkException($"this Insurance [Coded String:{(int)organizationType} Not implemented in current version");
+                        throw new SdkException($"this Insurance [Coded String:{(int)organizationType} Not supported in current version");
                 }
 
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -86,10 +86,7 @@ namespace Ditas.SDK
             _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-            if (preResponse.StatusCode != HttpStatusCode.OK)
-            {
-                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-            }
+            GenerateExceptionIfResponseGotError(preResponse);
             var response = ConvertToModel<DrugSalamatResponse>(preResponse.Content);
             _LogIfAvailiable($"Return Salamt Service", LogLevel.Debug);
 
@@ -105,15 +102,27 @@ namespace Ditas.SDK
                 ConfigurationManager.AppSettings[ConstatKeyValues.PRESCRIPTION_TAMIN_SERVICE_URL]);
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-            if (preResponse.StatusCode != HttpStatusCode.OK)
-            {
-                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-            }
+            GenerateExceptionIfResponseGotError(preResponse);
             var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
             _LogIfAvailiable($"Return Tamin Service", LogLevel.Debug);
             return Mappers.ClientModelMapper.ToResultVo(response);
         }
+        private ResultVO GetLaboratoryTamin(LaboratoryPrescriptionsMessageVO laboratoryPrescriptionsMessageVO)
+        {
+            _LogIfAvailiable($"Get Tamin Service", LogLevel.Debug);
 
+            var request = Mappers.ServiceModelMapper.ToLaboratoryTamin(laboratoryPrescriptionsMessageVO);
+
+            var header = new ApiHeader(
+                AppConfiguration.PID(ConstatKeyValues.Prescription_Tamin_Package_ID),
+                ConfigurationManager.AppSettings[ConstatKeyValues.PRESCRIPTION_TAMIN_SERVICE_URL]);
+
+            var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
+            GenerateExceptionIfResponseGotError(preResponse);
+            var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
+            _LogIfAvailiable($"Return Tamin Service", LogLevel.Debug);
+            return Mappers.ClientModelMapper.ToResultVo(response);
+        }
         /// <summary>
         ///          This method is used to retrieve the demographic information of the patient by national code and birth year.
         ///          </summary>
@@ -137,10 +146,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
 
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<GetEstelam3Response>(preResponse.Content, "getEstelam3Response", "return");
 
                 var result = Mappers.ClientModelMapper.ToPersonVo(response);
@@ -153,12 +159,14 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
+
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
+
         }
 
 
@@ -186,10 +194,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -201,11 +206,25 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
+
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
+            }
 #endif
+
+        }
+
+        private  void GenerateExceptionIfResponseGotError(RestSharp.IRestResponse preResponse)
+        {
+            if (preResponse.StatusCode != HttpStatusCode.OK)
+            {
+                _LogIfAvailiable("Generate error because the response failed");
+                if (preResponse.StatusCode == HttpStatusCode.NotFound)
+                    throw new SdkException($"Error:{(string.IsNullOrEmpty(preResponse?.Content) ? "Response is null" : preResponse?.Content)}");
+
+                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
             }
         }
 
@@ -233,10 +252,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -248,12 +264,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
 
         //Faze 2
@@ -284,10 +300,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -299,12 +312,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
 
 
@@ -331,10 +344,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -346,12 +356,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
         /// <summary>
         /// This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
@@ -378,10 +388,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -393,12 +400,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
         /// <summary>
         ///          This method is used to update the HID. It is used in case a reserved HID is used previously for a patinet encounter and thus it is necessary to update that HID to get confirmations.
@@ -425,10 +432,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -440,12 +444,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
         /// <summary>
         ///          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
@@ -472,10 +476,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -487,12 +488,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
         /// <summary>
         ///          This method eliminates the HID that is produced based on the patient and the healthcare provider's eligiblity.
@@ -519,10 +520,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -534,13 +532,14 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
+
         /// <summary>
         ///          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
         ///          </summary>
@@ -564,10 +563,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -579,13 +575,14 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
+
         /// <summary>
         ///          This method is used to update the status of HID to mention if it confirmed, or rejected, etc.
         ///          </summary>
@@ -609,10 +606,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -624,14 +618,13 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
-
 
         /// <summary>
         ///          This method is to get the Insurance info regarding any patient.
@@ -660,10 +653,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
 
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse.Content, "data");
 
                 if (result == null)
@@ -680,12 +670,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
 
         /// <summary>
@@ -713,10 +703,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<MemberInfoByMcResponse>(preResponse.Content, "GetMemberInfoByMcCodeNumericTypeEnResponse", "GetMemberInfoByMcCodeNumericTypeEnResult");
 
                 if (response.ReturnValue == null)
@@ -731,16 +718,13 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
-
-
-
 
         /// <summary>
         ///          This method is developed to exchange the BillSaummary data of patient encounters to healthcare faclities either inpatient or outpatients. The costs and contributions of all entities involved in heathcare delivery process including the patient, the basic insurance, the complemtary insurance, etc are detailed through this method.
@@ -804,10 +788,7 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"PID: {header.PackageID}| API: {header.ApiUrl}", LogLevel.Debug);
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
-                if (preResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
-                }
+                GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<ResultVO>(preResponse.Content);
                 _LogIfAvailiable($"End {methodName} Service");
                 return response;//TODO Change 
@@ -818,12 +799,12 @@ namespace Ditas.SDK
                 _LogIfAvailiable($"Some errors have occurred at {methodName}: {ex.Message}\r\nStackTrace:{ex.StackTrace}", LogLevel.Error);
                 throw;
             }
+#if LOG
             finally
             {
-#if LOG
                 _LogIfAvailiable($"methodName:{methodName} => Web Response:{(preResponse == null ? "respone was empty!" : $"{preResponse?.StatusCode} | {preResponse?.Content}")}", LogLevel.Fatal);
-#endif
             }
+#endif
         }
 
         /// <summary>
@@ -947,9 +928,25 @@ namespace Ditas.SDK
                 var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_LABORATORY_PRESCRIPTION_SECURE_URL];
 
 
-                var result = ToSepas(LaboratoryPrescriptionsMessage, pid, url);
+                var sepasResult = ToSepas(LaboratoryPrescriptionsMessage, pid, url);
+                var taminResult = new ResultVO();
+                InsuranceType organizationType = Utilities.GetOrganizationType(LaboratoryPrescriptionsMessage.Composition.Insurance.Insurer.Coded_string);
+                _LogIfAvailiable($"InsuranceType: {organizationType}", LogLevel.Info);
+
+                switch (organizationType)
+                {
+                    case InsuranceType.Tamin:
+                        taminResult = GetLaboratoryTamin(LaboratoryPrescriptionsMessage);
+                        break;
+                    case InsuranceType.Salamt:
+                    case InsuranceType.NirohayeMosallah:
+                    case InsuranceType.Azad:
+                    default:
+                        throw new SdkException($"this Insurance [Coded String:{(int)organizationType} Not supported in current version");
+                }
+
                 _LogIfAvailiable($"End {methodName} Service\r\n");
-                return result;
+                return taminResult.JoinToSepasResult(sepasResult);
             }
             // ------------------------part2------------------------------------------
             catch (Exception ex)
@@ -974,6 +971,9 @@ namespace Ditas.SDK
                 var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_LABORATORY_RESULT_PACKAGE_ID);
                 var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_LABORATORY_RESULT_SECURE_URL];
                 var result = ToSepas(LaboratoryResultMessage, pid, url);
+
+
+
                 _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;
             }
