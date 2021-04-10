@@ -18,10 +18,17 @@ namespace Ditas.SDK_Test
         [TestMethod]
         public void GetPersonInfo_OK()
         {
-            service = new Service();
-            var result = service.GetPersonByBirth("4569962343", 13650630);
-            Assert.IsNotNull(result);
-            Console.WriteLine(result.FirstName, result.LastName);
+            try
+            {
+                service = new Service();
+                var result = service.GetPersonByBirth("0440202744", 13700605);
+                Assert.IsNotNull(result);
+                Console.WriteLine(result.FirstName, result.LastName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
         [TestMethod]
         public void GetPersonInfo_LessNationlCode()

@@ -134,7 +134,27 @@ namespace Ditas.SDK_Test
             }
         }
 
-
+        [TestMethod]
+        public void GenerateBatchHID_OK()
+        {
+            try
+            {
+                service = new Service();
+                var result = service.GenerateBatchHID(
+                    new DO_CODED_TEXT
+                    {
+                        Coded_string= "1",
+                        Terminology_id = "thritaEHR.Insurer",
+                        Value = "تامین اجتماعی",},10
+                    );
+                Assert.IsNotNull(result);
+            }
+            catch (SdkException ex)
+            {
+                StringAssert.Contains(ex.Messages[0], "رزرو قابل انجام می باشد");
+                return;
+            }
+        }
         //[TestMethod]
         //public void RefreshToken()
         //{

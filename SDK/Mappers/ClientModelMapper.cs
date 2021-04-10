@@ -25,10 +25,17 @@ namespace Ditas.SDK.Mappers
                 FirstName = GetStringFromBase64(response.Name),
                 Gender = GetGender(response.Gender),
                 LastName = GetStringFromBase64(response.Family),
-                NationalCode = response.NationalCode,
-                Nationality = new DO_CODED_TEXT { Coded_string = response.NationalCode, },//TODO:IMP:Compelete Nationality property
+                NationalCode = NormalizeNationalCode(response.NationalCode),
+                Nationality = new DO_CODED_TEXT { Coded_string = NormalizeNationalCode(response.NationalCode), },//TODO:IMP:Compelete Nationality property
                 OtherIdentifier = new PersonIdentifierVO[0],//TODO:IMP:Compelete OtherIdentifier property
             };
+        }
+
+        private static string NormalizeNationalCode(string nationalCode)
+        {
+            if (nationalCode.Length < 10)
+                return nationalCode.PadLeft(10, '0');
+            return nationalCode;
         }
 
         private static string GetStringFromBase64(string input)
@@ -59,7 +66,7 @@ namespace Ditas.SDK.Mappers
         internal static ResultVO ToResultVo(PrescriptionTaminResponse response)
         {
             if (response == null) return new ResultVO { ErrorMessage = "Server no response" };
-            return new ResultVO {CompositionUID = response?.HeadEprscId,ErrorMessage = response?.FullErrorMessage};
+            return new ResultVO { CompositionUID = response?.HeadEprscId, ErrorMessage = response?.FullErrorMessage };
         }
         internal static ResultVO ToResultVo(DrugSalamatResponse response)
         {

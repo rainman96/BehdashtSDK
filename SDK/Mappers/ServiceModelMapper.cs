@@ -22,7 +22,7 @@ namespace Ditas.SDK.Mappers
 
             var nationalCode = medicationPrescriptionsMessage?.Person?.NationalCode;
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
 
             var reps = medicationPrescriptionsMessage?.Composition?.MedicationPrescriptions?.Repeats;
             int repeat = reps.HasValue ? reps.Value : 0;
@@ -143,7 +143,7 @@ namespace Ditas.SDK.Mappers
         internal static HIDRequest GetHIDRequest(string nationalCode, DO_IDENTIFIER healthCareFacilityID, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
             if (healthCareFacilityID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
             if (insurer == null)
@@ -169,7 +169,7 @@ namespace Ditas.SDK.Mappers
 
             var nationalCode = laboratoryPrescriptionsMessageVO?.Person?.NationalCode;
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
 
             var reps = laboratoryPrescriptionsMessageVO?.Composition?.ServicePrescriptions?.Repeats;
             int repeat = reps.HasValue ? reps.Value : 0;
@@ -204,7 +204,7 @@ namespace Ditas.SDK.Mappers
             if (personID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(personID)).Message);
             if (!Utilities.ValidateIranianNationalCode(personID.ID))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(personID.ID)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(personID.ID)).Message);
             if (providerID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(providerID)).Message);
             if (string.IsNullOrEmpty(providerID.ID))
@@ -224,7 +224,7 @@ namespace Ditas.SDK.Mappers
         internal static RequestPersonInformation GetPersonRequest(string nationalCode, int birthYear)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
             if (birthYear < 1 || birthYear.ToString().Length != 8)
                 throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(birthYear)).Message);
 
@@ -298,7 +298,7 @@ namespace Ditas.SDK.Mappers
         internal static UpdateHIDRequest GetUpdateHIDRequest(DO_IDENTIFIER HID, string nationalCode, DO_IDENTIFIER healthCareFacilityID, DO_CODED_TEXT insurer, DO_IDENTIFIER orgID)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
             if (healthCareFacilityID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(healthCareFacilityID)).Message);
             if (insurer == null)
@@ -390,7 +390,7 @@ namespace Ditas.SDK.Mappers
         internal static VerifyHIDRequest GetVerifyHIDRequest(string nationalCode, DO_IDENTIFIER HID, DO_IDENTIFIER orgID)
         {
             if (!Utilities.ValidateIranianNationalCode(nationalCode))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(nationalCode)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(nationalCode)).Message);
             if (orgID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
             if (HID == null)
@@ -410,7 +410,7 @@ namespace Ditas.SDK.Mappers
             if (PersonId == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(PersonId)).Message);
             if (!Utilities.ValidateIranianNationalCode(PersonId?.ID))
-                throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(PersonId.ID)).Message);
+                throw new SdkException(Constants.Messages.InvalidFieldValue(nameof(PersonId.ID)).Message);
             if (orgID == null)
                 throw new SdkException(Constants.Messages.ValueIsNullMessage(nameof(orgID)).Message);
             if (HID == null)

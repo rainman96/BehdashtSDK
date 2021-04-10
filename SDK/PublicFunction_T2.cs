@@ -87,6 +87,7 @@ namespace Ditas.SDK
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             GenerateExceptionIfResponseGotError(preResponse);
+            _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
             var response = ConvertToModel<DrugSalamatResponse>(preResponse.Content);
             _LogIfAvailiable($"Return Salamt Service", LogLevel.Debug);
 
@@ -103,6 +104,7 @@ namespace Ditas.SDK
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             GenerateExceptionIfResponseGotError(preResponse);
+            _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
             var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
             _LogIfAvailiable($"Return Tamin Service", LogLevel.Debug);
             return Mappers.ClientModelMapper.ToResultVo(response);
@@ -119,6 +121,7 @@ namespace Ditas.SDK
 
             var preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
             GenerateExceptionIfResponseGotError(preResponse);
+            _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
             var response = ConvertToModel<PrescriptionTaminResponse>(preResponse.Content, "data", "data", "result");
             _LogIfAvailiable($"Return Tamin Service", LogLevel.Debug);
             return Mappers.ClientModelMapper.ToResultVo(response);
@@ -148,7 +151,7 @@ namespace Ditas.SDK
 
                 GenerateExceptionIfResponseGotError(preResponse);
                 var response = ConvertToModel<GetEstelam3Response>(preResponse.Content, "getEstelam3Response", "return");
-
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var result = Mappers.ClientModelMapper.ToPersonVo(response);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
@@ -195,6 +198,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : null;
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -216,15 +220,27 @@ namespace Ditas.SDK
 
         }
 
-        private  void GenerateExceptionIfResponseGotError(RestSharp.IRestResponse preResponse)
+        private void GenerateExceptionIfResponseGotError(RestSharp.IRestResponse preResponse)
         {
             if (preResponse.StatusCode != HttpStatusCode.OK)
             {
                 _LogIfAvailiable("Generate error because the response failed");
-                if (preResponse.StatusCode == HttpStatusCode.NotFound)
-                    throw new SdkException($"Error:{(string.IsNullOrEmpty(preResponse?.Content) ? "Response is null" : preResponse?.Content)}");
-
-                throw new SdkException($"ErrorException:{preResponse.ErrorException.Message}| ErrorMessage:{preResponse.ErrorMessage}");
+                //if (preResponse.StatusCode == HttpStatusCode.NotFound)
+                //    throw new SdkException($"Error:{(string.IsNullOrEmpty(preResponse?.Content) ? "Response is null" : preResponse?.Content)}");
+                string error;
+                if (preResponse == null)
+                    error = "Server no response!";
+                else
+                {
+                    error = $"Status Code: {preResponse.StatusCode}{(!string.IsNullOrEmpty(preResponse?.StatusDescription) ? " , StatusDescription:{preResponse.StatusDescription}" : "")}";
+                    if (!string.IsNullOrEmpty(preResponse?.Content))
+                        error += $" | Content: {preResponse.Content}";
+                    if (preResponse?.ErrorException != null)
+                        error += $" | Error Exception: {preResponse.ErrorException.Message}";
+                    if (preResponse?.ErrorMessage != null)
+                        error += $" | Error Message: {preResponse.ErrorException.Message}";
+                }
+                throw new SdkException(error);
             }
         }
 
@@ -253,6 +269,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -301,6 +318,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<HIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -389,6 +407,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -433,6 +452,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<UpdateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -477,6 +497,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -521,6 +542,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<EliminateHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -564,6 +586,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -607,6 +630,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<BatchHIDResponse>(preResponse.Content);
                 var result = response.IsSuccess ? response.Data : throw new SdkException(messages: response.Message);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -654,11 +678,14 @@ namespace Ditas.SDK
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
 
                 GenerateExceptionIfResponseGotError(preResponse);
+
+                _LogIfAvailiable($"Converte response to model Level 1", LogLevel.Debug);
                 var result = ConvertToModel<List<InsuranceInquiryVO>>(preResponse.Content, "data");
 
                 if (result == null)
                 {
                     var cause = ConvertToModel<CallUpFailedResponse>(preResponse.Content);
+                    _LogIfAvailiable($"Converte response to model Level 2", LogLevel.Debug);
                     result = new List<InsuranceInquiryVO> { new InsuranceInquiryVO { ErrorMessage = cause.message[0] } };
                 }
                 _LogIfAvailiable($"End {methodName} Service\r\n");
@@ -704,10 +731,12 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model Level 1", LogLevel.Debug);
                 var response = ConvertToModel<MemberInfoByMcResponse>(preResponse.Content, "GetMemberInfoByMcCodeNumericTypeEnResponse", "GetMemberInfoByMcCodeNumericTypeEnResult");
 
                 if (response.ReturnValue == null)
                     throw new SdkException(response.Message);
+                _LogIfAvailiable($"Converte response to model Level 2", LogLevel.Debug);
                 HealthcareProviderVO result = Mappers.ClientModelMapper.HealthcareProviderVO(response);
                 _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;//TODO Change 
@@ -789,6 +818,7 @@ namespace Ditas.SDK
 
                 preResponse = _factory.GetChannel().CheckConfiguration().GetToken().CallWebApi(header, new ApiRequest(request.ToJson()));
                 GenerateExceptionIfResponseGotError(preResponse);
+                _LogIfAvailiable($"Converte response to model", LogLevel.Debug);
                 var response = ConvertToModel<ResultVO>(preResponse.Content);
                 _LogIfAvailiable($"End {methodName} Service");
                 return response;//TODO Change 
@@ -971,8 +1001,6 @@ namespace Ditas.SDK
                 var pid = AppConfiguration.PID(ConstatKeyValues.SAVE_LABORATORY_RESULT_PACKAGE_ID);
                 var url = ConfigurationManager.AppSettings[ConstatKeyValues.SAVE_LABORATORY_RESULT_SECURE_URL];
                 var result = ToSepas(LaboratoryResultMessage, pid, url);
-
-
 
                 _LogIfAvailiable($"End {methodName} Service\r\n");
                 return result;
